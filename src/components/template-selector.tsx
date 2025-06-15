@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Check } from "lucide-react"
+import Image from "next/image"
 
 interface TemplateSelectorProps {
   isOpen: boolean
@@ -14,7 +15,16 @@ interface TemplateSelectorProps {
   onSelectTemplate: (template: string) => void
 }
 
-const templates = [
+export interface Template {
+  id: string
+  name: string
+  category: string
+  description: string
+  preview: string
+  tags: string[]
+}
+
+export const templates: Template[] = [
   {
     id: "modern",
     name: "Modern",
@@ -86,7 +96,7 @@ export function TemplateSelector({ isOpen, onClose, currentTemplate, onSelectTem
               >
                 <CardContent className="p-4">
                   <div className="relative mb-3">
-                    <img
+                    <Image
                       src={template.preview || "/placeholder.svg"}
                       alt={template.name}
                       className="w-full h-40 object-cover rounded border"

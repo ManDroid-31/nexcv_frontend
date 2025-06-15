@@ -1,3 +1,5 @@
+// this is main dashboard for creating viewing and all stuff
+
 "use client"
 
 import { useState } from "react"
@@ -10,16 +12,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Download, Share2, Code, Copy, ExternalLink, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
+interface ResumeData {
+  slug: string;
+  isPublic: boolean;
+}
+
 interface ExportModalProps {
   isOpen: boolean
   onClose: () => void
-  resumeData: any
+  resumeData: ResumeData
 }
 
 export function ExportModal({ isOpen, onClose, resumeData }: ExportModalProps) {
   const [isExporting, setIsExporting] = useState(false)
   const [shareUrl] = useState(`https://nexcv.app/resume/${resumeData.slug}`)
-  const { toast } = useToast()
+  const { toast } = useToast();
 
   const handleDownloadPDF = async () => {
     setIsExporting(true)

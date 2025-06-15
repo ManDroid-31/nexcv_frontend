@@ -60,6 +60,7 @@ export default function Dashboard() {
           </div>
 
           {/* Quick Actions */}
+          {/* Creaet new  */}
           <div className="grid md:grid-cols-2 gap-4 mb-8">
             <Link href="/editor/new">
               <Card className="cursor-pointer hover:shadow-lg transition-shadow border-dashed border-2 border-gray-300 hover:border-blue-500">
@@ -73,9 +74,11 @@ export default function Dashboard() {
               </Card>
             </Link>
 
+            {/* IMport from Linkedin */}
             <Card className="cursor-pointer hover:shadow-lg transition-shadow">
               <CardContent className="flex items-center justify-center p-8">
                 <div className="text-center">
+                  {/* this icon is depreciated buut i can still use thsi so i guess no big deal */}
                   <Linkedin className="w-12 h-12 text-blue-600 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Import from LinkedIn</h3>
                   <p className="text-gray-600">AI-powered profile import</p>
