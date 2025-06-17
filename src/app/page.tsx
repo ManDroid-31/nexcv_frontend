@@ -1,3 +1,7 @@
+//nothing more than just landing page
+// you may go net without over-view 
+
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -7,6 +11,8 @@ import { AuthProvider, SignInButton, SignUpButton, SignedIn, SignedOut } from "@
 
 export default function LandingPage() {
   return (
+
+    //below is from mock auth
     <AuthProvider>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
         {/* Header */}
@@ -52,6 +58,8 @@ export default function LandingPage() {
             share with a public URL.
           </p>
           <div className="flex items-center justify-center space-x-4">
+
+            {/* beutiful logic here, cursor used contextt api's here */}
             <SignedOut>
               <SignUpButton mode="modal">
                 <Button size="lg" className="text-lg px-8">

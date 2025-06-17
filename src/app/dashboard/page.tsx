@@ -1,3 +1,9 @@
+// dashboard here 
+// contains user info, resumes, add new resume and all that stuff
+
+
+// done reviewing may need minor changes with scaling
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -75,6 +81,7 @@ export default function Dashboard() {
             </Link>
 
             {/* IMport from Linkedin */}
+            {/* TODO ADD LINKEDIN FUNCTIONALITY */}
             <Card className="cursor-pointer hover:shadow-lg transition-shadow">
               <CardContent className="flex items-center justify-center p-8">
                 <div className="text-center">

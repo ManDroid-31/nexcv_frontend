@@ -12,8 +12,8 @@ import { Sparkles, Send, Wand2, FileText, Target, Lightbulb, CheckCircle, Clock 
 interface AISidebarProps {
   isOpen: boolean
   onClose: () => void
-  resumeData: any
-  onUpdateResume: (data: any) => void
+  resumeData: ResumeData
+  onUpdateResume: (data: ResumeData) => void
 }
 
 export function AISidebar({ isOpen, onClose, resumeData, onUpdateResume }: AISidebarProps) {

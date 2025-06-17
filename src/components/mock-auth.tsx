@@ -1,3 +1,5 @@
+//this is mock so for now ignoring seems best way to me
+
 "use client"
 
 import type React from "react"
@@ -46,6 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={{ isSignedIn, user, signIn, signUp, signOut }}>{children}</AuthContext.Provider>
 }
 
+
+//lol, bro thot he will use context api and we wouldnt notice 
 function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
