@@ -4,6 +4,8 @@ export interface PersonalInfo {
   phone: string;
   location: string;
   website?: string;
+  linkedin?: string;
+  github?: string;
 }
 
 export interface Experience {
@@ -13,6 +15,7 @@ export interface Experience {
   startDate: string;
   endDate: string;
   description: string;
+  tags?: string[];
 }
 
 export interface Education {
@@ -21,6 +24,8 @@ export interface Education {
   degree: string;
   startDate: string;
   endDate: string;
+  gpa?: string;
+  tags?: string[];
 }
 
 export interface Project {
@@ -32,6 +37,7 @@ export interface Project {
   githubUrl?: string;
   startDate?: string;
   endDate?: string;
+  tags?: string[];
 }
 
 export interface KeyValuePair {
@@ -62,17 +68,39 @@ export interface CustomSection {
   value: CustomSectionValue;
 }
 
+// Define layout types
+export interface Margins {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+export interface Spacing {
+  sectionGap: number;
+  paragraphGap: number;
+  lineHeight: number;
+}
+
+export interface Layout {
+  margins: Margins;
+  spacing: Spacing;
+  scale: number;
+}
+
 export interface ResumeData {
   title: string;
   slug: string;
   isPublic: boolean;
   template: string;
+  tags: string[];
+  layout: Layout;
   personalInfo: PersonalInfo;
-  summary?: string;
+  summary: string;
   experience: Experience[];
   education: Education[];
   projects: Project[];
   skills: string[];
   customSections: CustomSection[];
-  [key: string]: unknown;
+  sectionOrder: string[];
 } 

@@ -80,17 +80,6 @@ interface ResumeState {
   error: string | null
   lastUpdate: number
   currentTemplate: string
-  sectionOrder: string[]
-  
-  // Actions
-  setResumeData: (data: ResumeData) => void
-  updateResumeData: (data: Partial<ResumeData>) => void
-  clearResumeData: () => void
-  setLoading: (loading: boolean) => void
-  setError: (error: string | null) => void
-  setTemplate: (template: string) => void
-  updatePreview: (data: ResumeData) => void
-  setSectionOrder: (order: string[]) => void
 }
 
 // Default resume data
@@ -99,6 +88,12 @@ const defaultResumeData: ResumeData = {
   slug: "software-engineer-resume",
   isPublic: true,
   template: "modern",
+  tags: [],
+  layout: {
+    margins: { top: 40, bottom: 40, left: 40, right: 40 },
+    spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
+    scale: 1,
+  },
   personalInfo: {
     name: "John Doe",
     email: "john@example.com",
@@ -132,12 +127,20 @@ const defaultResumeData: ResumeData = {
       name: "E-commerce Platform",
       description: "Built a scalable e-commerce platform using Next.js and Node.js",
       technologies: ["Next.js", "Node.js", "PostgreSQL", "AWS"],
-      url: "https://example.com/project",
       startDate: "2023-01",
       endDate: "2023-06"
     }
   ],
   skills: ["JavaScript", "React", "Node.js", "Python", "AWS"],
+  customSections: [],
+  sectionOrder: [
+    "personalInfo",
+    "summary",
+    "experience",
+    "education",
+    "projects",
+    "skills"
+  ]
 }
 
 // Create store
@@ -151,31 +154,22 @@ export const useResumeStore = create<ResumeState>()(
       error: null,
       lastUpdate: Date.now(),
       currentTemplate: 'modern',
-      sectionOrder: Object.keys(defaultResumeData).filter(key => 
-        !['title', 'slug', 'isPublic', 'template', 'customSections'].includes(key)
-      ),
 
       // Actions
-      setResumeData: (data) => set({
+      setResumeData: (data: ResumeData) => set({
         resumeData: data,
         previewData: data,
         lastUpdate: Date.now(),
         error: null,
-        sectionOrder: Object.keys(data).filter(key => 
-          !['title', 'slug', 'isPublic', 'template', 'customSections'].includes(key)
-        )
       }),
 
-      updateResumeData: (data) => set((state) => {
+      updateResumeData: (data: Partial<ResumeData>) => set((state) => {
         const newData = state.resumeData ? { ...state.resumeData, ...data } : null
         return {
           resumeData: newData,
           previewData: newData,
           lastUpdate: Date.now(),
           error: null,
-          sectionOrder: Object.keys(newData).filter(key => 
-            !['title', 'slug', 'isPublic', 'template', 'customSections'].includes(key)
-          )
         }
       }),
 
@@ -184,23 +178,19 @@ export const useResumeStore = create<ResumeState>()(
         previewData: null,
         lastUpdate: Date.now(),
         error: null,
-        sectionOrder: []
       }),
 
-      setLoading: (loading) => set({ isLoading: loading }),
+      setLoading: (loading: boolean) => set({ isLoading: loading }),
 
-      setError: (error) => set({ error }),
+      setError: (error: string | null) => set({ error }),
 
-      setTemplate: (template) => set((state) => ({
+      setTemplate: (template: string) => set((state) => ({
         currentTemplate: template,
         resumeData: state.resumeData ? { ...state.resumeData, template } : null,
         previewData: state.previewData ? { ...state.previewData, template } : null,
-        sectionOrder: Object.keys(state.resumeData).filter(key => 
-          !['title', 'slug', 'isPublic', 'template', 'customSections'].includes(key)
-        )
       })),
 
-      updatePreview: debounce((data) => {
+      updatePreview: debounce((data: ResumeData) => {
         set((state) => {
           if (JSON.stringify(state.previewData) === JSON.stringify(data)) {
             return state
@@ -211,15 +201,12 @@ export const useResumeStore = create<ResumeState>()(
           }
         })
       }, 100),
-
-      setSectionOrder: (order) => set({ sectionOrder: order })
     }),
     {
       name: 'resume-storage',
       partialize: (state) => ({ 
         resumeData: state.resumeData,
         currentTemplate: state.currentTemplate,
-        sectionOrder: state.sectionOrder
       })
     }
   )

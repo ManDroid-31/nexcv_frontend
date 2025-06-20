@@ -39,6 +39,8 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -48,8 +50,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { OnMount } from '@monaco-editor/react'
-import * as monaco from 'monaco-editor'
+import type { editor } from 'monaco-editor'
+import { getTemplateDefaultLayout } from '@/components/templates'
 
 // Dynamically import Monaco Editor with no SSR
 const MonacoEditor = dynamic(
@@ -105,10 +107,12 @@ type SectionType = keyof typeof SECTION_TEMPLATES;
 function DraggableSection({ 
   id, 
   title, 
+  onTitleChange,
   children 
 }: { 
   id: string
   title: string
+  onTitleChange?: (newTitle: string) => void;
   children: React.ReactNode 
 }) {
   const {
@@ -124,20 +128,33 @@ function DraggableSection({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    boxShadow: isDragging ? '0 0 0 4px #3b82f6, 0 2px 8px rgba(0,0,0,0.10)' : undefined,
+    border: isDragging ? '2px solid #3b82f6' : undefined,
+    zIndex: isDragging ? 10 : undefined,
   }
 
   return (
     <div ref={setNodeRef} style={style} className="relative">
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute -left-8 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing"
-      >
-        <GripVertical className="w-4 h-4 text-gray-400" />
-      </div>
       <Card>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
+        <CardHeader className="flex flex-row items-center gap-2">
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing flex items-center"
+            style={{ marginRight: 8 }}
+          >
+            <GripVertical className="w-5 h-5 text-blue-500" />
+          </div>
+          {onTitleChange ? (
+            <Input
+              className="font-bold text-lg border-none bg-transparent focus:ring-0 focus:outline-none p-0 h-auto"
+              value={title}
+              onChange={e => onTitleChange(e.target.value)}
+              style={{ width: Math.max(80, title.length * 12) }}
+            />
+          ) : (
+            <CardTitle>{title}</CardTitle>
+          )}
         </CardHeader>
         <CardContent>
           {children}
@@ -145,6 +162,84 @@ function DraggableSection({
       </Card>
     </div>
   )
+}
+
+// Add type safety for dynamic object access
+type ResumeKey = keyof ResumeData;
+type CustomSectionKey = string;
+
+// Helper to check if a string is a valid section name
+const isValidSectionName = (name: string): name is keyof ResumeData => {
+  const validSections = [
+    'title',
+    'slug',
+    'isPublic',
+    'template',
+    'tags',
+    'layout',
+    'personalInfo',
+    'summary',
+    'experience',
+    'education',
+    'projects',
+    'skills',
+    'customSections',
+    'sectionOrder'
+  ] as const;
+  return validSections.includes(name as keyof ResumeData);
+};
+
+// Patch: Prevent id editing in JSON mode
+import { KeyValuePair, ArrayObjectItem, CustomSectionValue } from '@/types/resume';
+
+function isKeyValuePairArray(val: CustomSectionValue): val is KeyValuePair[] {
+  return Array.isArray(val) && val.length > 0 && typeof val[0] === 'object' && 'key' in val[0] && 'value' in val[0];
+}
+function isArrayObjectItemArray(val: CustomSectionValue): val is ArrayObjectItem[] {
+  return Array.isArray(val) && val.length > 0 && typeof val[0] === 'object' && 'title' in val[0] && 'description' in val[0];
+}
+function restoreIdsFromOriginal(original: ResumeData, edited: ResumeData): ResumeData {
+  // Restore ids for main array/object sections
+  function restoreArray<T extends { id?: string }>(origArr: T[], editArr: T[]): T[] {
+    return editArr.map((item, idx) =>
+      typeof item === 'object' && item !== null && origArr[idx] && origArr[idx].id
+        ? { ...item, id: origArr[idx].id }
+        : item
+    );
+  }
+  const result: ResumeData = { ...edited };
+  if (Array.isArray(original.experience) && Array.isArray(edited.experience)) {
+    result.experience = restoreArray(original.experience, edited.experience);
+  }
+  if (Array.isArray(original.projects) && Array.isArray(edited.projects)) {
+    result.projects = restoreArray(original.projects, edited.projects);
+  }
+  if (Array.isArray(original.education) && Array.isArray(edited.education)) {
+    result.education = restoreArray(original.education, edited.education);
+  }
+  if (Array.isArray(original.skills) && Array.isArray(edited.skills)) {
+    result.skills = edited.skills;
+  }
+  // Restore ids for customSections and their values
+  if (Array.isArray(original.customSections) && Array.isArray(edited.customSections)) {
+    result.customSections = edited.customSections.map((section, idx) => {
+      const origSection = original.customSections[idx];
+      if (!origSection) return section;
+      let newValue = section.value;
+      // Only restore ids for KeyValuePair[] and ArrayObjectItem[]
+      if (isKeyValuePairArray(origSection.value) && isKeyValuePairArray(section.value)) {
+        newValue = section.value.map((item, i) =>
+          origSection.value[i] ? { ...item, id: origSection.value[i].id } : item
+        );
+      } else if (isArrayObjectItemArray(origSection.value) && isArrayObjectItemArray(section.value)) {
+        newValue = section.value.map((item, i) =>
+          origSection.value[i] ? { ...item, id: origSection.value[i].id } : item
+        );
+      }
+      return { ...section, id: origSection.id, value: newValue };
+    });
+  }
+  return result;
 }
 
 export default function ResumeEditor({ params }: PageProps) {
@@ -174,18 +269,53 @@ export default function ResumeEditor({ params }: PageProps) {
 
   const totalPages = RESUME_SECTIONS.length
 
-  // Add section order state
-  const [sectionOrder, setSectionOrder] = useState<string[]>([])
+  // Helper function to check if a key is a valid ResumeKey
+  const isResumeKey = (key: string): key is keyof ResumeData => {
+    if (!resumeData) return false;
+    return isValidSectionName(key);
+  };
 
-  // Initialize section order
-  useEffect(() => {
-    if (resumeData) {
-      const order = Object.keys(resumeData).filter(key => 
-        !['title', 'slug', 'isPublic', 'template', 'customSections'].includes(key)
-      )
-      setSectionOrder(order)
+  // Helper function to get section value
+  const getSectionValue = (key: string): unknown => {
+    if (!resumeData) return undefined;
+    if (isResumeKey(key)) {
+      return resumeData[key];
     }
-  }, [resumeData])
+    const customSection = resumeData.customSections.find(
+      section => section.name.toLowerCase().replace(/\s+/g, '') === key
+    );
+    return customSection?.value;
+  };
+
+  // Helper function to update section value
+  const updateSectionValue = (key: string, value: unknown) => {
+    if (!resumeData) return;
+    if (isResumeKey(key)) {
+      updateResumeData({ [key]: value });
+    } else {
+      const customSection = resumeData.customSections.find(
+        section => section.name.toLowerCase().replace(/\s+/g, '') === key
+      );
+      if (customSection) {
+        const updatedSections = resumeData.customSections.map(section =>
+          section.id === customSection.id
+            ? { ...section, value: value as CustomSectionValue }
+            : section
+        );
+        updateResumeData({ customSections: updatedSections });
+      }
+    }
+  };
+
+  // Helper to get all section keys (main + custom)
+  const getAllSectionKeys = () => {
+    if (!resumeData) return [];
+    const mainKeys = Object.keys(resumeData).filter(key =>
+      !['title', 'slug', 'isPublic', 'template', 'customSections', 'sectionOrder'].includes(key)
+    )
+    const customKeys = (resumeData.customSections || []).map(section => `custom:${section.id}`)
+    return [...mainKeys, ...customKeys]
+  }
 
   // Add DnD sensors
   const sensors = useSensors(
@@ -195,16 +325,24 @@ export default function ResumeEditor({ params }: PageProps) {
     })
   )
 
-  // Handle drag end
+  // Add active section state
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null)
+
+  // Update handleDragStart to track active section
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveSectionId(String(event.active.id))
+  }
+
+  // Update handleDragEnd to support custom section keys
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-
+    setActiveSectionId(null)
+    console.log('DragEnd', { active, over })
     if (over && active.id !== over.id) {
-      setSectionOrder((items) => {
-        const oldIndex = items.indexOf(active.id as string)
-        const newIndex = items.indexOf(over.id as string)
-        return arrayMove(items, oldIndex, newIndex)
-      })
+      const oldIndex = resumeData.sectionOrder.indexOf(active.id as string)
+      const newIndex = resumeData.sectionOrder.indexOf(over.id as string)
+      const newOrder = arrayMove(resumeData.sectionOrder, oldIndex, newIndex)
+      updateResumeData({ sectionOrder: newOrder })
     }
   }
 
@@ -286,8 +424,10 @@ export default function ResumeEditor({ params }: PageProps) {
 
     const formattedName = sectionName.trim().toLowerCase().replace(/\s+/g, '');
     
-    // Check if section already exists
-    if (resumeData && resumeData[formattedName] !== undefined) {
+    // Check if section already exists in customSections
+    if (resumeData && resumeData.customSections.some(section => 
+      section.name.toLowerCase().replace(/\s+/g, '') === formattedName
+    )) {
       toast.error('Section already exists');
       return;
     }
@@ -303,7 +443,7 @@ export default function ResumeEditor({ params }: PageProps) {
     const template = SECTION_TEMPLATES[sectionType as SectionType];
     
     // Create new section with template
-    const newSection = JSON.parse(JSON.stringify(template));
+    const newSection = JSON.parse(JSON.stringify(template)) as CustomSectionValue;
     
     // Add to customSections array
     const customSection: CustomSection = {
@@ -314,52 +454,41 @@ export default function ResumeEditor({ params }: PageProps) {
     };
 
     if (resumeData) {
-      const updatedData = {
+      const newSectionKey = `custom:${customSection.id}`;
+      setResumeData({
         ...resumeData,
-        customSections: [...(resumeData.customSections || []), customSection],
-        [formattedName]: newSection
-      };
-      setResumeData(updatedData); // Use setResumeData instead of updateResumeData for full update
+        customSections: [...resumeData.customSections, customSection],
+        sectionOrder: [...resumeData.sectionOrder, newSectionKey]
+      });
       toast.success('New section added successfully');
     }
   };
 
-  // Add a helper function for section updates
-  const updateSectionValue = (key: string, newValue: CustomSectionValue, customSection: CustomSection) => {
-    if (resumeData) {
-      updateResumeData({ [key]: newValue });
-      // Update custom section value
-      const updatedSections = resumeData.customSections.map(section =>
-        section.id === customSection.id
-          ? { ...section, value: newValue }
-          : section
-      );
-      updateResumeData({ customSections: updatedSections });
-    }
-  };
-
-  // Add a helper function for section removal
+  // Helper function to remove a section
   const removeSection = (key: string, customSection: CustomSection) => {
     if (resumeData) {
-      // Create a new object without the removed section
       const updatedData = {
         ...resumeData,
         customSections: resumeData.customSections.filter(
           section => section.id !== customSection.id
         )
       } as ResumeData;
-      delete updatedData[key];
+
+      if (isResumeKey(key)) {
+        delete updatedData[key];
+      }
       
       setResumeData(updatedData);
-      
-      // Update section order
-      setSectionOrder(prev => prev.filter(section => section !== key));
-      
+      setResumeData({
+        ...resumeData,
+        sectionOrder: resumeData.sectionOrder.filter(section => section !== `custom:${customSection.id}`)
+      });
       toast.success('Section removed successfully');
     }
   };
 
-  const renderFormField = (key: string, value: unknown) => {
+  // Update the renderFormField function
+  const renderFormField = (key: ResumeKey | CustomSectionKey, value: unknown) => {
     // Find if this is a custom section
     const customSection = resumeData?.customSections?.find(section => 
       section.name.toLowerCase().replace(/\s+/g, '') === key
@@ -375,12 +504,16 @@ export default function ResumeEditor({ params }: PageProps) {
             if (confirm(`Are you sure you want to remove the "${title}" section?`)) {
               if (customSection) {
                 removeSection(key, customSection);
-              } else {
-                // For standard sections
-                const updatedData = { ...resumeData } as ResumeData;
-                delete updatedData[key];
-                setResumeData(updatedData);
-                setSectionOrder(prev => prev.filter(section => section !== key));
+              } else if (resumeData && isValidSectionName(key)) {
+                // For standard sections, create a new object without the removed section
+                const { [key]: removed, ...rest } = resumeData;
+                // Silence the unused variable warning
+                void removed;
+                setResumeData(rest as ResumeData);
+                setResumeData({
+                  ...resumeData,
+                  sectionOrder: resumeData.sectionOrder.filter(section => section !== key)
+                });
                 toast.success(`${title} section removed successfully`);
               }
             }
@@ -389,6 +522,48 @@ export default function ResumeEditor({ params }: PageProps) {
           <Trash2 className="w-4 h-4 mr-2" />
           Remove Section
         </Button>
+      </div>
+    );
+
+    // Add tag editing for sections that support it
+    const renderTags = (tags: string[] = [], onUpdate: (tags: string[]) => void) => (
+      <div className="space-y-2">
+        <Label>Tags</Label>
+        <div className="flex flex-wrap gap-2">
+          {tags.map((tag, index) => (
+            <Badge key={index} variant="secondary" className="flex items-center gap-1">
+              {tag}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-auto p-0 ml-1 cursor-pointer"
+                onClick={() => {
+                  const newTags = [...tags];
+                  newTags.splice(index, 1);
+                  onUpdate(newTags);
+                }}
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </Badge>
+          ))}
+        </div>
+        <Input 
+          placeholder="Add tags (comma-separated)"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && e.currentTarget.value) {
+              const newTags = e.currentTarget.value
+                .split(',')
+                .map(tag => tag.trim())
+                .filter(tag => tag && !tags.includes(tag));
+              
+              if (newTags.length > 0) {
+                onUpdate([...tags, ...newTags]);
+              }
+              e.currentTarget.value = '';
+            }
+          }}
+        />
       </div>
     );
 
@@ -401,7 +576,7 @@ export default function ResumeEditor({ params }: PageProps) {
               <Textarea
                 value={value as string || ''}
           onChange={(e) => {
-                  updateSectionValue(key, e.target.value, customSection);
+                  updateSectionValue(key, e.target.value);
                 }}
                 rows={4}
                 placeholder={`Enter your ${customSection.name}...`}
@@ -424,7 +599,7 @@ export default function ResumeEditor({ params }: PageProps) {
                       onClick={() => {
                         const newValue = [...(value as string[])];
                         newValue.splice(index, 1);
-                        updateSectionValue(key, newValue, customSection);
+                        updateSectionValue(key, newValue);
                       }}
                     >
                       <Trash2 className="w-3 h-3" />
@@ -443,7 +618,7 @@ export default function ResumeEditor({ params }: PageProps) {
                     
                     if (newItems.length > 0) {
                       const newValue = [...(value as string[]), ...newItems];
-                      updateSectionValue(key, newValue, customSection);
+                      updateSectionValue(key, newValue);
                     }
                     e.currentTarget.value = '';
                   }
@@ -465,7 +640,7 @@ export default function ResumeEditor({ params }: PageProps) {
                         value={subValue}
                         onChange={(e) => {
                           const newValue = { ...(value as Record<string, string>), [subKey]: e.target.value };
-                          updateSectionValue(key, newValue, customSection);
+                          updateSectionValue(key, newValue);
                         }}
                       />
                       <Button
@@ -475,7 +650,7 @@ export default function ResumeEditor({ params }: PageProps) {
                         onClick={() => {
                           const newValue = { ...(value as Record<string, string>) };
                           delete newValue[subKey];
-                          updateSectionValue(key, newValue, customSection);
+                          updateSectionValue(key, newValue);
                         }}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -495,7 +670,7 @@ export default function ResumeEditor({ params }: PageProps) {
                     const input = document.getElementById(`new-field-${key}`) as HTMLInputElement;
                     if (input.value && resumeData) {
                       const newValue = { ...(value as Record<string, string>), [input.value]: '' };
-                      updateSectionValue(key, newValue, customSection);
+                      updateSectionValue(key, newValue);
                       input.value = '';
                     }
                   }}
@@ -520,7 +695,7 @@ export default function ResumeEditor({ params }: PageProps) {
                         onChange={(e) => {
                           const newValue = [...(value as KeyValuePair[])];
                           newValue[index] = { ...item, key: e.target.value };
-                          updateSectionValue(key, newValue, customSection);
+                          updateSectionValue(key, newValue);
                         }}
                         placeholder="Enter key"
                       />
@@ -532,7 +707,7 @@ export default function ResumeEditor({ params }: PageProps) {
                         onChange={(e) => {
                           const newValue = [...(value as KeyValuePair[])];
                           newValue[index] = { ...item, value: e.target.value };
-                          updateSectionValue(key, newValue, customSection);
+                          updateSectionValue(key, newValue);
                         }}
                         placeholder="Enter value"
                       />
@@ -546,7 +721,7 @@ export default function ResumeEditor({ params }: PageProps) {
                       onClick={() => {
                         const newValue = [...(value as KeyValuePair[])];
                         newValue.splice(index, 1);
-                        updateSectionValue(key, newValue, customSection);
+                        updateSectionValue(key, newValue);
                       }}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
@@ -565,7 +740,7 @@ export default function ResumeEditor({ params }: PageProps) {
                     key: '',
                     value: ''
                   });
-                  updateSectionValue(key, newValue, customSection);
+                  updateSectionValue(key, newValue);
                 }}
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -589,7 +764,7 @@ export default function ResumeEditor({ params }: PageProps) {
                           onChange={(e) => {
                             const newValue = [...(value as ArrayObjectItem[])];
                             newValue[index] = { ...item, [subKey]: e.target.value };
-                            updateSectionValue(key, newValue, customSection);
+                            updateSectionValue(key, newValue);
                           }}
                         />
                       </div>
@@ -603,7 +778,7 @@ export default function ResumeEditor({ params }: PageProps) {
                       onClick={() => {
                         const newValue = [...(value as ArrayObjectItem[])];
                         newValue.splice(index, 1);
-                        updateSectionValue(key, newValue, customSection);
+                        updateSectionValue(key, newValue);
                       }}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
@@ -623,7 +798,7 @@ export default function ResumeEditor({ params }: PageProps) {
                     description: '',
                     date: ''
                   });
-                  updateSectionValue(key, newValue, customSection);
+                  updateSectionValue(key, newValue);
                 }}
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -638,10 +813,10 @@ export default function ResumeEditor({ params }: PageProps) {
     if (typeof value === 'string') {
       return (
         <div className="space-y-4">
-          {renderSectionHeader(key.charAt(0).toUpperCase() + key.slice(1))}
+          {renderSectionHeader(key as string)}
           <Textarea
             value={value}
-            onChange={(e) => updateResumeData({ [key]: e.target.value })}
+            onChange={(e) => updateSectionValue(key, e.target.value)}
             rows={4}
             placeholder={`Enter your ${key}...`}
           />
@@ -652,7 +827,7 @@ export default function ResumeEditor({ params }: PageProps) {
     if (Array.isArray(value)) {
       return (
         <div className="space-y-4">
-          {renderSectionHeader(key.charAt(0).toUpperCase() + key.slice(1))}
+          {renderSectionHeader(key as string)}
           {value.map((item, itemIndex) => (
             <div key={itemIndex} className="border rounded-lg p-4 space-y-3">
               {typeof item === 'string' ? (
@@ -666,7 +841,7 @@ export default function ResumeEditor({ params }: PageProps) {
                       onClick={() => {
                         const newValue = [...value];
                         newValue.splice(itemIndex, 1);
-                        updateResumeData({ [key]: newValue });
+                        updateSectionValue(key, newValue);
                       }}
                     >
                       <Trash2 className="w-3 h-3" />
@@ -693,7 +868,7 @@ export default function ResumeEditor({ params }: PageProps) {
                             onChange={(e) => {
                               const newValue = [...value];
                               newValue[itemIndex] = { ...item, name: e.target.value };
-                              updateResumeData({ [key]: newValue });
+                              updateSectionValue(key, newValue);
                             }}
                           />
                         </div>
@@ -706,7 +881,7 @@ export default function ResumeEditor({ params }: PageProps) {
                             onChange={(e) => {
                               const newValue = [...value];
                               newValue[itemIndex] = { ...item, liveUrl: e.target.value };
-                              updateResumeData({ [key]: newValue });
+                              updateSectionValue(key, newValue);
                             }}
                             placeholder="https://your-project.com"
                           />
@@ -718,7 +893,7 @@ export default function ResumeEditor({ params }: PageProps) {
                             onChange={(e) => {
                               const newValue = [...value];
                               newValue[itemIndex] = { ...item, githubUrl: e.target.value };
-                              updateResumeData({ [key]: newValue });
+                              updateSectionValue(key, newValue);
                             }}
                             placeholder="https://github.com/username/project"
                           />
@@ -731,7 +906,7 @@ export default function ResumeEditor({ params }: PageProps) {
                           onChange={(e) => {
                             const newValue = [...value];
                             newValue[itemIndex] = { ...item, description: e.target.value };
-                            updateResumeData({ [key]: newValue });
+                            updateSectionValue(key, newValue);
                           }}
                           rows={3}
                         />
@@ -745,7 +920,7 @@ export default function ResumeEditor({ params }: PageProps) {
                             onChange={(e) => {
                               const newValue = [...value];
                               newValue[itemIndex] = { ...item, startDate: e.target.value };
-                              updateResumeData({ [key]: newValue });
+                              updateSectionValue(key, newValue);
                             }}
                           />
                         </div>
@@ -757,7 +932,7 @@ export default function ResumeEditor({ params }: PageProps) {
                             onChange={(e) => {
                               const newValue = [...value];
                               newValue[itemIndex] = { ...item, endDate: e.target.value };
-                              updateResumeData({ [key]: newValue });
+                              updateSectionValue(key, newValue);
                             }}
                           />
                         </div>
@@ -778,7 +953,7 @@ export default function ResumeEditor({ params }: PageProps) {
                                     ...item,
                                     technologies: item.technologies.filter((_: string, i: number) => i !== techIndex)
                                   };
-                                  updateResumeData({ [key]: newValue });
+                                  updateSectionValue(key, newValue);
                                 }}
                               >
                                 <Trash2 className="w-3 h-3" />
@@ -802,13 +977,18 @@ export default function ResumeEditor({ params }: PageProps) {
                                   ...item,
                                   technologies: [...item.technologies, ...newTechnologies]
                                 };
-                                updateResumeData({ [key]: newValue });
+                                updateSectionValue(key, newValue);
                               }
                               e.currentTarget.value = '';
                             }
                           }}
                         />
                       </div>
+                      {renderTags(item.tags || [], (newTags) => {
+                        const newValue = [...value];
+                        newValue[itemIndex] = { ...item, tags: newTags };
+                        updateSectionValue(key, newValue);
+                      })}
                     </>
                   ) : (
                     <div className="grid grid-cols-2 gap-3">
@@ -822,7 +1002,7 @@ export default function ResumeEditor({ params }: PageProps) {
                             onChange={(e) => {
                               const newValue = [...value];
                               newValue[itemIndex] = { ...item, [itemKey]: e.target.value };
-                              updateResumeData({ [key]: newValue });
+                              updateSectionValue(key, newValue);
                             }}
                           />
                         </div>
@@ -837,7 +1017,7 @@ export default function ResumeEditor({ params }: PageProps) {
                 onClick={() => {
                         const newValue = [...value];
                         newValue.splice(itemIndex, 1);
-                        updateResumeData({ [key]: newValue });
+                        updateSectionValue(key, newValue);
                       }}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
@@ -860,9 +1040,7 @@ export default function ResumeEditor({ params }: PageProps) {
                       .filter(item => item && !value.includes(item));
                     
                     if (newItems.length > 0) {
-                      updateResumeData({
-                        [key]: [...value, ...newItems]
-                      });
+                      updateSectionValue(key, [...value, ...newItems]);
                     }
                     e.currentTarget.value = '';
                   }
@@ -905,7 +1083,7 @@ export default function ResumeEditor({ params }: PageProps) {
                 } else {
                   newValue.push({});
                 }
-                updateResumeData({ [key]: newValue });
+                updateSectionValue(key, newValue);
               }}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -931,7 +1109,7 @@ export default function ResumeEditor({ params }: PageProps) {
                 onChange={(e) => {
                         const newValue = [...value];
                         newValue[index] = { ...item, key: e.target.value };
-                        updateResumeData({ [key]: newValue });
+                        updateSectionValue(key, newValue);
                       }}
                     />
                   </div>
@@ -942,7 +1120,7 @@ export default function ResumeEditor({ params }: PageProps) {
                       onChange={(e) => {
                         const newValue = [...value];
                         newValue[index] = { ...item, value: e.target.value };
-                        updateResumeData({ [key]: newValue });
+                        updateSectionValue(key, newValue);
                       }}
                     />
                   </div>
@@ -955,7 +1133,7 @@ export default function ResumeEditor({ params }: PageProps) {
                     onClick={() => {
                       const newValue = [...value];
                       newValue.splice(index, 1);
-                      updateResumeData({ [key]: newValue });
+                      updateSectionValue(key, newValue);
                     }}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
@@ -974,7 +1152,7 @@ export default function ResumeEditor({ params }: PageProps) {
                   key: '',
                   value: ''
                 });
-                updateResumeData({ [key]: newValue });
+                updateSectionValue(key, newValue);
               }}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -993,9 +1171,7 @@ export default function ResumeEditor({ params }: PageProps) {
                 <Label>{subKey.charAt(0).toUpperCase() + subKey.slice(1)}</Label>
                 <Input
                   value={subValue as string}
-                  onChange={(e) => updateResumeData({
-                    [key]: { ...value, [subKey]: e.target.value }
-                  })}
+                  onChange={(e) => updateSectionValue(key, { ...value, [subKey]: e.target.value })}
                 />
               </div>
             ))}
@@ -1004,7 +1180,7 @@ export default function ResumeEditor({ params }: PageProps) {
             variant="outline"
             className="cursor-pointer"
             onClick={() => {
-              updateResumeData({ [key]: {} });
+              updateSectionValue(key, {});
             }}
           >
             <Trash2 className="w-4 h-4 mr-2" />
@@ -1036,12 +1212,22 @@ export default function ResumeEditor({ params }: PageProps) {
   // Update the form fields rendering to use DraggableSection
   const renderFormFields = () => {
     if (!resumeData) return null
-
+    const sectionOrder = resumeData.sectionOrder || [];
     return (
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
+        onDragStart={handleDragStart}
+        onDragEnd={event => {
+          const { active, over } = event;
+          setActiveSectionId(null);
+          if (over && active.id !== over.id) {
+            const oldIndex = sectionOrder.indexOf(active.id as string);
+            const newIndex = sectionOrder.indexOf(over.id as string);
+            const newOrder = arrayMove(sectionOrder, oldIndex, newIndex);
+            updateResumeData({ sectionOrder: newOrder });
+          }
+        }}
       >
         <SortableContext
           items={sectionOrder}
@@ -1049,16 +1235,42 @@ export default function ResumeEditor({ params }: PageProps) {
         >
           <div className="space-y-6">
             {sectionOrder.map((key) => {
-              // Skip these fields as they're handled separately
-              if (['title', 'slug', 'isPublic', 'template'].includes(key)) return null
-              
+              // Main section
+              if (!key.startsWith('custom:')) {
+                if (["title", "slug", "isPublic", "template"].includes(key)) return null
+                const value = getSectionValue(key);
+                if (value === undefined) return null;
+                return (
+                  <DraggableSection
+                    key={key}
+                    id={key}
+                    title={key.charAt(0).toUpperCase() + key.slice(1)}
+                  >
+                    {renderFormField(key as ResumeKey, value)}
+                  </DraggableSection>
+                )
+              }
+              // Custom section
+              const customId = key.replace('custom:', '')
+              const customSection = resumeData.customSections?.find(s => s.id === customId)
+              if (!customSection) return null
               return (
                 <DraggableSection
                   key={key}
                   id={key}
-                  title={key.charAt(0).toUpperCase() + key.slice(1)}
+                  title={customSection.name}
+                  onTitleChange={newName => {
+                    // Update custom section name and sectionOrder
+                    const updatedSections = resumeData.customSections.map(s =>
+                      s.id === customSection.id ? { ...s, name: newName } : s
+                    );
+                    const updatedOrder = sectionOrder.map(k =>
+                      k === key ? `custom:${customSection.id}` : k
+                    );
+                    updateResumeData({ customSections: updatedSections, sectionOrder: updatedOrder });
+                  }}
                 >
-                  {renderFormField(key, resumeData[key])}
+                  {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, '') as ResumeKey, customSection.value)}
                 </DraggableSection>
               )
             })}
@@ -1104,58 +1316,124 @@ export default function ResumeEditor({ params }: PageProps) {
             </Card>
           </div>
         </SortableContext>
+        <DragOverlay adjustScale={true} dropAnimation={null}>
+          {activeSectionId ? (() => {
+            // Main section
+            if (!activeSectionId.startsWith('custom:')) {
+              if (["title", "slug", "isPublic", "template"].includes(activeSectionId)) return null;
+              const value = getSectionValue(activeSectionId);
+              if (value === undefined) return null;
+              return (
+                <div className="z-50 opacity-90">
+                  <DraggableSection
+                    id={activeSectionId}
+                    title={activeSectionId.charAt(0).toUpperCase() + activeSectionId.slice(1)}
+                  >
+                    {renderFormField(activeSectionId as ResumeKey, value)}
+                  </DraggableSection>
+                </div>
+              );
+            }
+            // Custom section
+            const customId = activeSectionId.replace('custom:', '')
+            const customSection = resumeData.customSections?.find(s => s.id === customId)
+            if (!customSection) return null
+            return (
+              <div className="z-50 opacity-90">
+                <DraggableSection
+                  id={activeSectionId}
+                  title={customSection.name}
+                >
+                  {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, '') as ResumeKey, customSection.value)}
+                </DraggableSection>
+              </div>
+            )
+          })() : null}
+        </DragOverlay>
       </DndContext>
     )
   }
 
   // Update the Monaco editor onMount handler
-  const handleEditorMount: OnMount = (editor) => {
+  const handleEditorMount = (editor: editor.IStandaloneCodeEditor) => {
     // Add Ctrl+S handler
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      try {
-        const value = editor.getValue();
-        JSON.parse(value);
-        toast.success("JSON is valid");
-      } catch {
-        toast.error("Invalid JSON format");
+    editor.addCommand(
+      // Use numbers instead of KeyMod/KeyCode since we can't import monaco directly
+      2048 | 49, // monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS
+      () => {
+        try {
+          const value = editor.getValue();
+          const parsed = JSON.parse(value);
+          // Patch: restore ids from original data
+          const safeParsed = restoreIdsFromOriginal(resumeData, parsed);
+          setResumeData(safeParsed);
+          toast.success("JSON is valid");
+        } catch {
+          toast.error("Invalid JSON format");
+        }
       }
-    });
+    );
   };
 
-  // Load resume data when component mounts
+  // Update the initial resume data with proper types
   useEffect(() => {
     if (resumeId) {
-      // TODO: Load resume data using resumeId
-      // For now, we'll use mock data
       setResumeData({
         title: "Software Engineer Resume",
         slug: "software-engineer-resume",
         isPublic: true,
-        template: "modern",
+        template: "onyx",
+        tags: [],
+        layout: {
+          margins: {
+            top: 40,
+            bottom: 40,
+            left: 40,
+            right: 40
+          },
+          spacing: {
+            sectionGap: 24,
+            paragraphGap: 12,
+            lineHeight: 1.5
+          },
+          scale: 1
+        },
         personalInfo: {
           name: "John Doe",
           email: "john@example.com",
           phone: "+1 (555) 123-4567",
           location: "San Francisco, CA"
         },
-        experience: [
-          {
-            id: Date.now().toString(),
-            position: "Software Engineer",
-            company: "Example Corp",
-            startDate: "2023-01",
-            endDate: "2023-06",
-            description: "Developed and maintained web applications using modern technologies."
-          }
-        ],
-        skills: ["JavaScript", "React", "Node.js", "Python", "AWS"],
         summary: "",
+        experience: [{
+          id: Date.now().toString(),
+          position: "Software Engineer",
+          company: "Example Corp",
+          startDate: "2023-01",
+          endDate: "2023-06",
+          description: "Developed and maintained web applications using modern technologies.",
+          tags: []
+        }],
+        skills: ["JavaScript", "React", "Node.js", "Python", "AWS"],
         education: [],
         projects: [],
-        customSections: []
+        customSections: [],
+        sectionOrder: ["personalInfo", "summary", "experience", "education", "projects", "skills"]
       });
     }
   }, [resumeId, setResumeData]);
+
+  // Add this function to get default layout for the current template
+  const handleResetLayout = () => {
+    if (!resumeData) return;
+    // You need to implement getTemplateDefaultLayout to return the default layout for a template
+    const defaultLayout = getTemplateDefaultLayout(resumeData.template);
+    setResumeData({
+      ...resumeData,
+      layout: defaultLayout
+    });
+    toast.success('Layout reset to template default!');
+  };
 
   if (isLoading) {
     return <div>Loading...</div>
@@ -1181,7 +1459,12 @@ export default function ResumeEditor({ params }: PageProps) {
           onSaveClick={handleSave}
           onExportClick={() => setIsExportModalOpen(true)}
         />
-
+        {/* Reset Layout Button */}
+        <div className="flex justify-end px-6 pt-4">
+          <Button variant="outline" onClick={handleResetLayout}>
+            Reset Layout to Template Default
+          </Button>
+        </div>
         <div 
           ref={containerRef}
           className={`flex h-[calc(100vh-73px)] relative ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : ''}`}
@@ -1266,7 +1549,7 @@ export default function ResumeEditor({ params }: PageProps) {
                               </CardTitle>
                             </CardHeader>
                             <CardContent>
-                          {renderFormField(RESUME_SECTIONS[currentPage - 1]?.key, resumeData[RESUME_SECTIONS[currentPage - 1]?.key])}
+                          {renderFormField(RESUME_SECTIONS[currentPage - 1]?.key as ResumeKey, resumeData[RESUME_SECTIONS[currentPage - 1]?.key])}
                             </CardContent>
                           </Card>
 
@@ -1325,10 +1608,12 @@ export default function ResumeEditor({ params }: PageProps) {
                     defaultLanguage="json"
                     value={JSON.stringify(resumeData, null, 2)}
                     onChange={(value: string | undefined) => {
-                      if (value) {
+                      if (value && resumeData) {
                         try {
                           const parsed = JSON.parse(value);
-                          setResumeData(parsed);
+                          // Patch: restore ids from original data
+                          const safeParsed = restoreIdsFromOriginal(resumeData, parsed);
+                          setResumeData(safeParsed);
                           toast.success("JSON is valid");
                         } catch {
                           // Don't update state if JSON is invalid
@@ -1372,21 +1657,89 @@ export default function ResumeEditor({ params }: PageProps) {
                   <h3 className="font-semibold">Live Preview</h3>
                   <select
                     className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-                    value={resumeData.template}
+                    value={resumeData?.template || 'onyx'}
                     onChange={(e) => {
                       setTemplate(e.target.value);
                       toast.success(`Template changed to ${e.target.value}`);
                     }}
                   >
-                    <option value="modern">Modern</option>
-                    <option value="academic">Academic</option>
-                    <option value="creative">Creative</option>
-                    <option value="professional">Professional</option>
-                    <option value="minimal">Minimal</option>
-                    <option value="elegant">Elegant</option>
+                    <option value="onyx">Onyx</option>
+                    <option value="bronzor">Bronzor</option>
+                    <option value="ditto">Ditto</option>
+                    <option value="chikorita">Chikorita</option>
+                    <option value="leafish">Leafish</option>
+                    <option value="azurill">Azurill</option>
+                    <option value="gengar">Gengar</option>
+                    <option value="pikachu">Pikachu</option>
+                    <option value="kakuna">Kakuna</option>
                   </select>
                 </div>
                 <div className="flex items-center space-x-2">
+                    {/* Layout Controls */}
+                    {resumeData && (
+                      <div className="flex items-center gap-4 mr-4">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm">Margins</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={resumeData.layout?.margins?.left ?? 40}
+                            onChange={(e) => updateResumeData({
+                              layout: {
+                                ...resumeData.layout,
+                                margins: {
+                                  ...(resumeData.layout?.margins ?? {}),
+                                  left: Number(e.target.value),
+                                  right: Number(e.target.value)
+                                }
+                              }
+                            })}
+                            className="w-16 h-8"
+                          />
+                          <span className="text-sm text-gray-500">px</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm">Spacing</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={2}
+                            step={0.1}
+                            value={resumeData.layout?.spacing?.lineHeight ?? 1.5}
+                            onChange={(e) => updateResumeData({
+                              layout: {
+                                ...resumeData.layout,
+                                spacing: {
+                                  ...(resumeData.layout?.spacing ?? {}),
+                                  lineHeight: Number(e.target.value)
+                                }
+                              }
+                            })}
+                            className="w-16 h-8"
+                          />
+                          <span className="text-sm text-gray-500">×</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm">Scale</Label>
+                          <Input
+                            type="number"
+                            min={0.5}
+                            max={1.5}
+                            step={0.1}
+                            value={resumeData.layout?.scale ?? 1}
+                            onChange={(e) => updateResumeData({
+                              layout: {
+                                ...resumeData.layout,
+                                scale: Number(e.target.value)
+                              }
+                            })}
+                            className="w-16 h-8"
+                          />
+                          <span className="text-sm text-gray-500">×</span>
+                        </div>
+                      </div>
+                    )}
                     <Button variant="outline" size="sm" onClick={handleZoomOut}>
                       <ZoomOut className="w-4 h-4" />
                     </Button>
@@ -1396,7 +1749,7 @@ export default function ResumeEditor({ params }: PageProps) {
                     </Button>
                     <Button variant="outline" size="sm" onClick={toggleFullscreen}>
                       {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                  </Button>
+                    </Button>
                 </div>
               </div>
             </div>

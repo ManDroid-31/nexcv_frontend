@@ -2,25 +2,16 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { UserButton } from "@/components/mock-auth"
-import {
-  FileText,
-  Save,
-  Download,
-  Sparkles,
-  Palette,
-} from "lucide-react"
-import Link from "next/link"
+import { CheckSquare, Download, Save, Sparkles, LayoutTemplate } from "lucide-react"
 
 interface EditorHeaderProps {
-  title: string;
-  isPublic: boolean;
-  onTitleChange: (title: string) => void;
-  onTemplateClick: () => void;
-  onAIClick: () => void;
-  onSaveClick: () => void;
-  onExportClick: () => void;
+  title: string
+  isPublic: boolean
+  onTitleChange: (title: string) => void
+  onTemplateClick: () => void
+  onAIClick: () => void
+  onSaveClick: () => void
+  onExportClick: () => void
 }
 
 export function EditorHeader({
@@ -30,36 +21,36 @@ export function EditorHeader({
   onTemplateClick,
   onAIClick,
   onSaveClick,
-  onExportClick,
+  onExportClick
 }: EditorHeaderProps) {
   return (
-    <header className="bg-white border-b sticky top-0 z-40">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link href="/dashboard">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-                <FileText className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold">NexCV</span>
-            </div>
-          </Link>
-          <div className="flex items-center space-x-2">
+    <div className="border-b bg-white">
+      <div className="flex items-center justify-between p-4">
+        <div className="flex items-center gap-4">
+          <div className="space-y-1">
+            <label htmlFor="title" className="text-sm font-medium">Title</label>
             <Input
+              id="title"
               value={title}
               onChange={(e) => onTitleChange(e.target.value)}
-              className="text-lg font-semibold border-0 bg-transparent px-0 focus-visible:ring-0"
+              className="w-[300px]"
             />
-            <Badge variant={isPublic ? "default" : "secondary"}>
-              {isPublic ? "Published" : "Draft"}
-            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="public"
+              checked={isPublic}
+              onChange={() => onTitleChange(title)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <label htmlFor="public" className="text-sm font-medium">Public</label>
           </div>
         </div>
-
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onTemplateClick}>
-            <Palette className="w-4 h-4 mr-2" />
-            Template
+            <LayoutTemplate className="w-4 h-4 mr-2" />
+            Templates
           </Button>
           <Button variant="outline" size="sm" onClick={onAIClick}>
             <Sparkles className="w-4 h-4 mr-2" />
@@ -69,13 +60,12 @@ export function EditorHeader({
             <Save className="w-4 h-4 mr-2" />
             Save
           </Button>
-          <Button size="sm" onClick={onExportClick}>
+          <Button variant="outline" size="sm" onClick={onExportClick}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <UserButton afterSignOutUrl="/" />
         </div>
       </div>
-    </header>
+    </div>
   )
 } 

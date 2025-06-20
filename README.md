@@ -30,7 +30,7 @@ A modern, interactive resume builder that helps you create professional resumes 
   - [ ] PDF export
   - [ ] Shareable links
   - [ ] Version history
-
+- [ ] **Section drag-and-drop reordering**
 - [ ] **AI Features**
   - [ ] Content suggestions
   - [ ] Grammar check
