@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { CheckSquare, Download, Save, Sparkles, LayoutTemplate } from "lucide-react"
+import { Download, Save, Sparkles, LayoutTemplate } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 interface EditorHeaderProps {
   title: string
@@ -24,7 +25,7 @@ export function EditorHeader({
   onExportClick
 }: EditorHeaderProps) {
   return (
-    <div className="border-b bg-white">
+    <div className="border-b bg-background">
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <div className="space-y-1">
@@ -48,6 +49,7 @@ export function EditorHeader({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Button variant="outline" size="sm" onClick={onTemplateClick}>
             <LayoutTemplate className="w-4 h-4 mr-2" />
             Templates

@@ -45,24 +45,14 @@ function renderValue(value: unknown): React.ReactNode {
   return null;
 }
 
-export const Onyx = ({ data }: TemplateProps) => {
+export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
   const renderCustomSectionValue = (section: CustomSection) => renderValue(section.value);
-
-  // Get layout values with defaults
-  const margins = {
-    top: data.layout?.margins?.top ?? 40,
-    bottom: data.layout?.margins?.bottom ?? 40,
-    left: data.layout?.margins?.left ?? 40,
-    right: data.layout?.margins?.right ?? 40
-  };
 
   const spacing = {
     sectionGap: data.layout?.spacing?.sectionGap ?? 32,
     paragraphGap: data.layout?.spacing?.paragraphGap ?? 16,
     lineHeight: data.layout?.spacing?.lineHeight ?? 1.5
   };
-
-  const scale = data.layout?.scale ?? 1;
 
   // Helper to render a section by key
   function renderSectionByKey(key: string) {
@@ -86,7 +76,7 @@ export const Onyx = ({ data }: TemplateProps) => {
           <h2 className="text-2xl font-semibold border-b pb-2" style={{ marginBottom: `${spacing.paragraphGap}px` }}>
             Professional Summary
           </h2>
-          <p className="text-gray-700" style={{ lineHeight: spacing.lineHeight }}>{data.summary}</p>
+          <p className="text-gray-700" style={{ lineHeight: spacing.lineHeight, wordWrap: 'break-word', overflowWrap: 'break-word' }}>{data.summary}</p>
         </section>
       );
     }
@@ -108,7 +98,7 @@ export const Onyx = ({ data }: TemplateProps) => {
                     <span> • {exp.startDate} - {exp.endDate || 'Present'}</span>
                   )}
                 </div>
-                <p className="text-gray-700" style={{ lineHeight: spacing.lineHeight }}>{exp.description}</p>
+                <p className="text-gray-700" style={{ lineHeight: spacing.lineHeight, wordWrap: 'break-word', overflowWrap: 'break-word' }}>{exp.description}</p>
               </div>
             ))}
           </div>
@@ -171,7 +161,7 @@ export const Onyx = ({ data }: TemplateProps) => {
                 <h3 className="text-xl font-medium" style={{ marginBottom: `${spacing.paragraphGap/2}px` }}>
                   {project.name}
                 </h3>
-                <p className="text-gray-700" style={{ marginBottom: `${spacing.paragraphGap/2}px`, lineHeight: spacing.lineHeight }}>
+                <p className="text-gray-700" style={{ marginBottom: `${spacing.paragraphGap/2}px`, lineHeight: spacing.lineHeight, wordWrap: 'break-word', overflowWrap: 'break-word' }}>
                   {project.description}
                 </p>
                 {project.technologies && (
@@ -203,7 +193,7 @@ export const Onyx = ({ data }: TemplateProps) => {
           <h2 className="text-2xl font-semibold border-b pb-2" style={{ marginBottom: `${spacing.paragraphGap}px` }}>
             {customSection.name}
           </h2>
-          <div style={{ lineHeight: spacing.lineHeight }}>
+          <div style={{ lineHeight: spacing.lineHeight, wordWrap: 'break-word', overflowWrap: 'break-word' }}>
             {renderCustomSectionValue(customSection)}
           </div>
         </section>
@@ -212,28 +202,13 @@ export const Onyx = ({ data }: TemplateProps) => {
     return null;
   }
 
+  // Determine which sections to render
+  const sectionsToRenderList = sectionsToRender || data.sectionOrder || [];
+
   return (
-    <div
-      style={{
-        margin: `${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px`,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: 0,
-        minWidth: 0,
-      }}
-    >
-      <div
-        className="max-w-[850px] w-full bg-white shadow-lg"
-        style={{
-          padding: '40px',
-          transform: `scale(${scale})`,
-          transformOrigin: 'top center',
-        }}
-      >
-        {/* Render all sections in the order specified by sectionOrder */}
-        {(data.sectionOrder || []).map(renderSectionByKey)}
-      </div>
+    <div className="w-full">
+      {/* Render sections based on sectionsToRender or fallback to sectionOrder */}
+      {sectionsToRenderList.map(renderSectionByKey)}
     </div>
   );
 };

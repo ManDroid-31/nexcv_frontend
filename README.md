@@ -2,6 +2,19 @@
 
 A modern, interactive resume builder that helps you create professional resumes in minutes. Built with Next.js, TypeScript, and Tailwind CSS.
 
+# 🚧 TODO & Recent Changes
+
+## Major updates since 2025-06-12 (commit 7cf0df7)
+- Refactored editor and dashboard for modularity
+- Added multiple new resume templates and dynamic template system
+- Introduced Zustand stores for resume and template management
+- Added new hooks for resume CRUD operations
+- Strong typing for resume/template data
+- Improved UI/UX and modularized components
+- Removed legacy code and cleaned up configs
+
+---
+
 ## ✨ Features
 
 - [x] **Interactive Editor**

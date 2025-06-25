@@ -1,6 +1,10 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+
+
+// component dependencies
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,9 +27,12 @@ import {
 import { ResumePreview } from "@/components/resume-preview"
 import { AISidebar } from "@/components/ai-sidebar"
 import { TemplateSelector } from "@/components/template-selector"
-import { ExportModal } from "@/components/export-modal"
+import { ExportModal } from "@/components/export-modal"  //used for eport card
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { EditorHeader } from "@/components/editor-header"
+
+// 
+
 import dynamic from 'next/dynamic'
 import { toast } from "sonner"
 import { useResumeStore } from '@/stores/resume-store'
@@ -38,7 +45,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
   DragOverlay,
   DragStartEvent,
 } from '@dnd-kit/core'
@@ -190,7 +196,6 @@ const isValidSectionName = (name: string): name is keyof ResumeData => {
 };
 
 // Patch: Prevent id editing in JSON mode
-import { KeyValuePair, ArrayObjectItem, CustomSectionValue } from '@/types/resume';
 
 function isKeyValuePairArray(val: CustomSectionValue): val is KeyValuePair[] {
   return Array.isArray(val) && val.length > 0 && typeof val[0] === 'object' && 'key' in val[0] && 'value' in val[0];
@@ -228,13 +233,15 @@ function restoreIdsFromOriginal(original: ResumeData, edited: ResumeData): Resum
       let newValue = section.value;
       // Only restore ids for KeyValuePair[] and ArrayObjectItem[]
       if (isKeyValuePairArray(origSection.value) && isKeyValuePairArray(section.value)) {
-        newValue = section.value.map((item, i) =>
-          origSection.value[i] ? { ...item, id: origSection.value[i].id } : item
-        );
+        newValue = section.value.map((item, i) => {
+          const origItem = Array.isArray(origSection.value) && origSection.value[i];
+          return origItem && typeof origItem === 'object' && 'id' in origItem ? { ...item, id: origItem.id } : item;
+        });
       } else if (isArrayObjectItemArray(origSection.value) && isArrayObjectItemArray(section.value)) {
-        newValue = section.value.map((item, i) =>
-          origSection.value[i] ? { ...item, id: origSection.value[i].id } : item
-        );
+        newValue = section.value.map((item, i) => {
+          const origItem = Array.isArray(origSection.value) && origSection.value[i];
+          return origItem && typeof origItem === 'object' && 'id' in origItem ? { ...item, id: origItem.id } : item;
+        });
       }
       return { ...section, id: origSection.id, value: newValue };
     });
@@ -242,12 +249,18 @@ function restoreIdsFromOriginal(original: ResumeData, edited: ResumeData): Resum
   return result;
 }
 
+
+// main function and last 
 export default function ResumeEditor({ params }: PageProps) {
-  const { id: resumeId } = use(params)
+  const { id: resumeId } = use(params)      //set id as resumeId 
   const [editMode, setEditMode] = useState<EditMode>("form")
+
+  //UI componeents state handlers
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+
+
   const [currentPage, setCurrentPage] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [editorWidth, setEditorWidth] = useState(50) // percentage
@@ -263,13 +276,13 @@ export default function ResumeEditor({ params }: PageProps) {
     isLoading,
     error,
     setResumeData,
-    updateResumeData,
-    setTemplate
+    updateResumeData
   } = useResumeStore()
 
   const totalPages = RESUME_SECTIONS.length
 
   // Helper function to check if a key is a valid ResumeKey
+  // nothin complex just typeshit here
   const isResumeKey = (key: string): key is keyof ResumeData => {
     if (!resumeData) return false;
     return isValidSectionName(key);
@@ -307,16 +320,6 @@ export default function ResumeEditor({ params }: PageProps) {
     }
   };
 
-  // Helper to get all section keys (main + custom)
-  const getAllSectionKeys = () => {
-    if (!resumeData) return [];
-    const mainKeys = Object.keys(resumeData).filter(key =>
-      !['title', 'slug', 'isPublic', 'template', 'customSections', 'sectionOrder'].includes(key)
-    )
-    const customKeys = (resumeData.customSections || []).map(section => `custom:${section.id}`)
-    return [...mainKeys, ...customKeys]
-  }
-
   // Add DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -331,19 +334,6 @@ export default function ResumeEditor({ params }: PageProps) {
   // Update handleDragStart to track active section
   const handleDragStart = (event: DragStartEvent) => {
     setActiveSectionId(String(event.active.id))
-  }
-
-  // Update handleDragEnd to support custom section keys
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    setActiveSectionId(null)
-    console.log('DragEnd', { active, over })
-    if (over && active.id !== over.id) {
-      const oldIndex = resumeData.sectionOrder.indexOf(active.id as string)
-      const newIndex = resumeData.sectionOrder.indexOf(over.id as string)
-      const newOrder = arrayMove(resumeData.sectionOrder, oldIndex, newIndex)
-      updateResumeData({ sectionOrder: newOrder })
-    }
   }
 
   const handlePageChange = (page: number) => {
@@ -491,7 +481,7 @@ export default function ResumeEditor({ params }: PageProps) {
   const renderFormField = (key: ResumeKey | CustomSectionKey, value: unknown) => {
     // Find if this is a custom section
     const customSection = resumeData?.customSections?.find(section => 
-      section.name.toLowerCase().replace(/\s+/g, '') === key
+      section.name?.toLowerCase().replace(/\s+/g, '') === key
     );
 
     const renderSectionHeader = (title: string) => (
@@ -1214,6 +1204,10 @@ export default function ResumeEditor({ params }: PageProps) {
     if (!resumeData) return null
     const sectionOrder = resumeData.sectionOrder || [];
     return (
+
+
+
+      // actual form field
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -1250,6 +1244,8 @@ export default function ResumeEditor({ params }: PageProps) {
                   </DraggableSection>
                 )
               }
+
+
               // Custom section
               const customId = key.replace('custom:', '')
               const customSection = resumeData.customSections?.find(s => s.id === customId)
@@ -1274,6 +1270,11 @@ export default function ResumeEditor({ params }: PageProps) {
                 </DraggableSection>
               )
             })}
+
+
+
+
+
 
             {/* Add New Section Button */}
             <Card>
@@ -1316,6 +1317,10 @@ export default function ResumeEditor({ params }: PageProps) {
             </Card>
           </div>
         </SortableContext>
+
+
+
+        {/* below section for dragging animation */}
         <DragOverlay adjustScale={true} dropAnimation={null}>
           {activeSectionId ? (() => {
             // Main section
@@ -1449,7 +1454,7 @@ export default function ResumeEditor({ params }: PageProps) {
 
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <EditorHeader
           title={resumeData.title}
           isPublic={resumeData.isPublic}
@@ -1467,11 +1472,11 @@ export default function ResumeEditor({ params }: PageProps) {
         </div>
         <div 
           ref={containerRef}
-          className={`flex h-[calc(100vh-73px)] relative ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : ''}`}
+          className={`flex h-[calc(100vh-73px)] relative ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}
         >
           {/* Left Panel - Form/JSON Editor */}
           <div 
-            className="border-r bg-white overflow-y-auto"
+            className="border-r bg-background overflow-y-auto"
             style={{ width: isFullscreen ? '100%' : `${editorWidth}%` }}
           >
             <div className="p-6 h-full overflow-y-auto">
@@ -1530,7 +1535,7 @@ export default function ResumeEditor({ params }: PageProps) {
                           </PaginationItem>
                         </PaginationContent>
                       </Pagination>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {RESUME_SECTIONS[currentPage - 1]?.label}
                       </div>
                     </div>
@@ -1599,7 +1604,7 @@ export default function ResumeEditor({ params }: PageProps) {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="json-editor">Resume JSON</Label>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-muted-foreground">
                       Press Ctrl+S to validate JSON
                     </div>
                   </div>
@@ -1639,19 +1644,19 @@ export default function ResumeEditor({ params }: PageProps) {
           {/* Right Panel - Live Preview with Drag Area */}
           {!isFullscreen && (
           <div 
-            className="bg-gray-100 relative"
+            className="bg-muted relative"
             style={{ width: `${100 - editorWidth}%` }}
             onMouseDown={handleMouseDown}
           >
             {/* Visual Drag Indicator */}
             <div
-                className={`absolute top-0 bottom-0 left-0 w-1 bg-gray-200 hover:bg-blue-500 cursor-col-resize transition-colors ${
-                isDragging ? 'bg-blue-500' : ''
+                className={`absolute top-0 bottom-0 left-0 w-1 bg-border hover:bg-primary cursor-col-resize transition-colors ${
+                isDragging ? 'bg-primary' : ''
               }`}
             />
             
             {/* Preview Header */}
-            <div className="p-4 border-b bg-white">
+            <div className="p-4 border-b bg-background">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <h3 className="font-semibold">Live Preview</h3>
@@ -1659,7 +1664,7 @@ export default function ResumeEditor({ params }: PageProps) {
                     className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
                     value={resumeData?.template || 'onyx'}
                     onChange={(e) => {
-                      setTemplate(e.target.value);
+                      updateResumeData({ template: e.target.value });
                       toast.success(`Template changed to ${e.target.value}`);
                     }}
                   >
@@ -1690,6 +1695,8 @@ export default function ResumeEditor({ params }: PageProps) {
                                 ...resumeData.layout,
                                 margins: {
                                   ...(resumeData.layout?.margins ?? {}),
+                                  top: Number(e.target.value),
+                                  bottom: Number(e.target.value),
                                   left: Number(e.target.value),
                                   right: Number(e.target.value)
                                 }
@@ -1697,7 +1704,7 @@ export default function ResumeEditor({ params }: PageProps) {
                             })}
                             className="w-16 h-8"
                           />
-                          <span className="text-sm text-gray-500">px</span>
+                          <span className="text-sm text-muted-foreground">px</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Label className="text-sm">Spacing</Label>
@@ -1718,7 +1725,7 @@ export default function ResumeEditor({ params }: PageProps) {
                             })}
                             className="w-16 h-8"
                           />
-                          <span className="text-sm text-gray-500">×</span>
+                          <span className="text-sm text-muted-foreground">×</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Label className="text-sm">Scale</Label>
@@ -1736,7 +1743,7 @@ export default function ResumeEditor({ params }: PageProps) {
                             })}
                             className="w-16 h-8"
                           />
-                          <span className="text-sm text-gray-500">×</span>
+                          <span className="text-sm text-muted-foreground">×</span>
                         </div>
                       </div>
                     )}
@@ -1784,8 +1791,8 @@ export default function ResumeEditor({ params }: PageProps) {
           onClose={() => setIsTemplateModalOpen(false)}
           currentTemplate={resumeData.template}
           onSelectTemplate={(template) => {
-            setTemplate(template)
-            setIsTemplateModalOpen(false)
+            updateResumeData({ template });
+            setIsTemplateModalOpen(false);
           }}
         />
 
@@ -1794,3 +1801,8 @@ export default function ResumeEditor({ params }: PageProps) {
     </AuthProvider>
   )
 } 
+
+
+
+
+// fuk it Manas single handedly understood whole 2000(almostt) lines of code 🫡🫡🙌🙌

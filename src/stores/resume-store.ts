@@ -5,81 +5,21 @@ import { persist } from 'zustand/middleware'
 import { ResumeData } from '@/types/resume'
 import debounce from 'lodash/debounce'
 
-// Add template styles
-export const templateStyles = {
-  modern: {
-    container: "bg-white shadow-lg rounded-lg",
-    header: "text-center mb-8",
-    name: "text-3xl font-bold mb-2",
-    contact: "text-gray-600",
-    section: "mb-6",
-    sectionTitle: "text-xl font-semibold mb-2",
-    sectionContent: "text-gray-700",
-    tag: "px-2 py-1 bg-gray-100 rounded-full text-xs",
-  },
-  executive: {
-    container: "bg-white shadow-lg rounded-lg",
-    header: "text-left mb-8",
-    name: "text-3xl font-bold mb-2",
-    contact: "text-gray-600",
-    section: "mb-6",
-    sectionTitle: "text-xl font-semibold mb-2 border-b pb-2",
-    sectionContent: "text-gray-700",
-    tag: "px-2 py-1 bg-gray-100 rounded-full text-xs",
-  },
-  creative: {
-    container: "bg-white shadow-lg rounded-lg",
-    header: "text-center mb-8",
-    name: "text-3xl font-bold mb-2 text-blue-600",
-    contact: "text-gray-600",
-    section: "mb-6",
-    sectionTitle: "text-xl font-semibold mb-2 text-blue-600",
-    sectionContent: "text-gray-700",
-    tag: "px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs",
-  },
-  academic: {
-    container: "bg-white shadow-lg rounded-lg",
-    header: "text-left mb-8",
-    name: "text-3xl font-bold mb-2",
-    contact: "text-gray-600",
-    section: "mb-6",
-    sectionTitle: "text-xl font-semibold mb-2",
-    sectionContent: "text-gray-700",
-    tag: "px-2 py-1 bg-gray-100 rounded-full text-xs",
-  },
-  minimal: {
-    container: "bg-white shadow-sm rounded-lg",
-    header: "text-center mb-8",
-    name: "text-2xl font-bold mb-2",
-    contact: "text-gray-600 text-sm",
-    section: "mb-6",
-    sectionTitle: "text-lg font-semibold mb-2",
-    sectionContent: "text-gray-700 text-sm",
-    tag: "px-2 py-1 bg-gray-50 rounded-full text-xs",
-  },
-  startup: {
-    container: "bg-white shadow-lg rounded-lg",
-    header: "text-center mb-8",
-    name: "text-3xl font-bold mb-2 text-purple-600",
-    contact: "text-gray-600",
-    section: "mb-6",
-    sectionTitle: "text-xl font-semibold mb-2 text-purple-600",
-    sectionContent: "text-gray-700",
-    tag: "px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs",
-  },
-} as const;
-
-export type TemplateStyle = typeof templateStyles;
-export type TemplateType = keyof TemplateStyle;
 
 interface ResumeState {
   // State
-  resumeData: ResumeData | null
-  previewData: ResumeData | null
-  isLoading: boolean
-  error: string | null
-  lastUpdate: number
-  currentTemplate: string
+  resumeData: ResumeData | null;
+  previewData: ResumeData | null;
+  isLoading: boolean;
+  error: string | null;
+  lastUpdate: number;
+  currentTemplate: string;
+  setResumeData: (data: ResumeData) => void;
+  updateResumeData: (data: Partial<ResumeData>) => void;
+  setPreviewData: (data: ResumeData | null) => void;
+  setIsLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  setCurrentTemplate: (template: string) => void;
 }
 
 // Default resume data
@@ -184,11 +124,9 @@ export const useResumeStore = create<ResumeState>()(
 
       setError: (error: string | null) => set({ error }),
 
-      setTemplate: (template: string) => set((state) => ({
-        currentTemplate: template,
-        resumeData: state.resumeData ? { ...state.resumeData, template } : null,
-        previewData: state.previewData ? { ...state.previewData, template } : null,
-      })),
+      setPreviewData: (data: ResumeData | null) => set({ previewData: data }),
+      setIsLoading: (loading: boolean) => set({ isLoading: loading }),
+      setCurrentTemplate: (template: string) => set({ currentTemplate: template }),
 
       updatePreview: debounce((data: ResumeData) => {
         set((state) => {

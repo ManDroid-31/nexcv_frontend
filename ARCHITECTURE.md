@@ -216,3 +216,32 @@ interface ErrorResponse {
 4. Implement proper error handling
 5. Write unit tests for critical functionality
 6. Document all new features and API endpoints 
+
+# Changelog (Recent Major Updates)
+
+## Changes since commit 7cf0df7 (2025-06-12)
+
+- **Editor Improvements & Templates Added**
+  - Major refactor of the editor and dashboard pages for better modularity and maintainability.
+  - Added multiple new resume templates (azurill, bronzor, chikorita, ditto, gengar, glalie, kakuna, leafish, nosepass, onyx, pikachu, rhyhorn) under `src/components/templates/`.
+  - Introduced a dynamic template selection and preview system.
+
+- **State Management**
+  - Introduced `src/stores/resume-store.ts` using Zustand for managing resume data, preview, and template selection.
+  - Added `src/stores/template-store.ts` for managing available templates and current template state.
+
+- **Hooks**
+  - Added `src/hooks/use-resume.ts` for loading, saving, deleting, and listing resumes via API (acts as a middleware between frontend store and backend).
+
+- **Types**
+  - Added strong typing for resume and template data in `src/types/resume.ts` and `src/types/template.ts`.
+
+- **UI/UX**
+  - Improved and modularized UI components for editor, preview, and template selection.
+  - Added hydration warnings suppression for some UI components to fix SSR/CSR mismatches.
+
+- **Cleanup**
+  - Removed legacy code and old directory (`nexcv-ui-flow/`).
+  - Updated and cleaned up `package.json`, lock files, and configuration files.
+
+--- 
