@@ -13,6 +13,7 @@ interface EditorHeaderProps {
   onAIClick: () => void
   onSaveClick: () => void
   onExportClick: () => void
+  saving?: boolean
 }
 
 export function EditorHeader({
@@ -22,7 +23,8 @@ export function EditorHeader({
   onTemplateClick,
   onAIClick,
   onSaveClick,
-  onExportClick
+  onExportClick,
+  saving = false
 }: EditorHeaderProps) {
   return (
     <div className="border-b bg-background">
@@ -58,8 +60,8 @@ export function EditorHeader({
             <Sparkles className="w-4 h-4 mr-2" />
             AI Assistant
           </Button>
-          <Button variant="outline" size="sm" onClick={onSaveClick}>
-            <Save className="w-4 h-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={onSaveClick} disabled={saving}>
+            {saving ? <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2 inline-block" /> : <Save className="w-4 h-4 mr-2" />}
             Save
           </Button>
           <Button variant="outline" size="sm" onClick={onExportClick}>

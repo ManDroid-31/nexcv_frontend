@@ -29,8 +29,9 @@ import {
   Globe
 } from "lucide-react"
 import Link from "next/link"
-import { AuthProvider, SignInButton, SignUpButton, SignedIn, SignedOut } from "@/components/mock-auth"
+import { AuthProvider } from "@/components/mock-auth"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { SignInButton, SignUpButton, UserButton, SignedIn, SignedOut } from '@clerk/nextjs'
 
 export default function LandingPage() {
   const scrollToSection = (sectionId: string) => {
@@ -47,12 +48,12 @@ export default function LandingPage() {
         <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-sm">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <FileText className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <span className="text-xl font-bold">NexCV</span>
               </div>
+              <span className="text-xl font-bold">NexCV</span>
+            </div>
               
               {/* Desktop Navigation */}
               <div className="hidden md:flex items-center space-x-8">
@@ -82,21 +83,21 @@ export default function LandingPage() {
                 </button>
               </div>
 
-              <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4">
                 <ThemeToggle />
-                <SignedOut>
-                  <SignInButton mode="modal">
-                    <Button variant="ghost">Sign In</Button>
-                  </SignInButton>
-                  <SignUpButton mode="modal">
-                    <Button>Get Started</Button>
-                  </SignUpButton>
-                </SignedOut>
-                <SignedIn>
-                  <Link href="/dashboard">
-                    <Button>Dashboard</Button>
-                  </Link>
-                </SignedIn>
+                <div className="flex gap-4 items-center">
+              <SignedOut>
+                    <SignUpButton mode="modal">
+                      <button className="btn btn-primary">Sign Up</button>
+                    </SignUpButton>
+                <SignInButton mode="modal">
+                      <button className="btn btn-secondary">Log In</button>
+                </SignInButton>
+              </SignedOut>
+              <SignedIn>
+                    <UserButton afterSignOutUrl="/" />
+              </SignedIn>
+                </div>
               </div>
             </div>
           </div>
@@ -107,42 +108,42 @@ export default function LandingPage() {
           <div className="container mx-auto px-4">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-8">
-                <Badge variant="secondary" className="mb-4">
-                  <Sparkles className="w-4 h-4 mr-1" />
-                  AI-Powered Resume Builder
-                </Badge>
+          <Badge variant="secondary" className="mb-4">
+            <Sparkles className="w-4 h-4 mr-1" />
+            AI-Powered Resume Builder
+          </Badge>
                 
                 <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
                   Build a job-ready resume in{" "}
                   <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                     minutes
                   </span>
-                </h1>
+          </h1>
                 
                 <p className="text-xl text-muted-foreground max-w-2xl">
                   Smart templates. LinkedIn auto-import. AI-enhanced editing. Get 10 free credits to start.
-                </p>
+          </p>
                 
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <SignedOut>
-                    <SignUpButton mode="modal">
-                      <Button size="lg" className="text-lg px-8">
+            <SignedOut>
+              <SignUpButton mode="modal">
+                <Button size="lg" className="text-lg px-8">
                         Start Free
-                        <ArrowRight className="w-5 h-5 ml-2" />
-                      </Button>
-                    </SignUpButton>
-                  </SignedOut>
-                  <SignedIn>
-                    <Link href="/dashboard">
-                      <Button size="lg" className="text-lg px-8">
-                        Go to Dashboard
-                        <ArrowRight className="w-5 h-5 ml-2" />
-                      </Button>
-                    </Link>
-                  </SignedIn>
-                  <Button variant="outline" size="lg" className="text-lg px-8">
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </SignUpButton>
+            </SignedOut>
+            <SignedIn>
+              <Link href="/dashboard">
+                <Button size="lg" className="text-lg px-8">
+                  Go to Dashboard
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+            </SignedIn>
+            <Button variant="outline" size="lg" className="text-lg px-8">
                     Buy Credits
-                  </Button>
+            </Button>
                 </div>
 
                 <div className="flex items-center space-x-6 text-sm text-muted-foreground">
@@ -176,14 +177,14 @@ export default function LandingPage() {
         {/* Features Section */}
         <section id="features" className="py-20 bg-muted/30">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
+          <div className="text-center mb-16">
               <h2 className="text-3xl lg:text-4xl font-bold mb-4">
                 Everything you need to stand out
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 From beautiful templates to AI-powered content enhancement, we&apos;ve got you covered.
-              </p>
-            </div>
+            </p>
+          </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
@@ -211,16 +212,16 @@ export default function LandingPage() {
               </Card>
 
               <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-                <CardContent className="p-6">
+              <CardContent className="p-6">
                   <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mb-4">
                     <Brain className="w-6 h-6 text-purple-600" />
-                  </div>
+                </div>
                   <h3 className="text-xl font-semibold mb-2">AI-Enhanced Editing</h3>
                   <p className="text-muted-foreground">
-                    Let AI help you write compelling bullet points, improve tone, and suggest missing sections.
-                  </p>
-                </CardContent>
-              </Card>
+                  Let AI help you write compelling bullet points, improve tone, and suggest missing sections.
+                </p>
+              </CardContent>
+            </Card>
 
               <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
                 <CardContent className="p-6">
@@ -235,28 +236,28 @@ export default function LandingPage() {
               </Card>
 
               <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-                <CardContent className="p-6">
+              <CardContent className="p-6">
                   <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center mb-4">
                     <Download className="w-6 h-6 text-red-600" />
-                  </div>
+                </div>
                   <h3 className="text-xl font-semibold mb-2">PDF Export</h3>
                   <p className="text-muted-foreground">
                     Export your resume as a high-quality PDF or share with a public URL for easy access.
-                  </p>
-                </CardContent>
-              </Card>
+                </p>
+              </CardContent>
+            </Card>
 
               <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-                <CardContent className="p-6">
+              <CardContent className="p-6">
                   <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg flex items-center justify-center mb-4">
                     <CreditCard className="w-6 h-6 text-indigo-600" />
-                  </div>
+                </div>
                   <h3 className="text-xl font-semibold mb-2">Credit System</h3>
                   <p className="text-muted-foreground">
                     Start with 10 free credits. Buy more as needed for AI features and premium templates.
-                  </p>
-                </CardContent>
-              </Card>
+                </p>
+              </CardContent>
+            </Card>
             </div>
           </div>
         </section>
@@ -300,16 +301,16 @@ export default function LandingPage() {
                       <span>Public sharing</span>
                     </div>
                   </div>
-                  <SignedOut>
-                    <SignUpButton mode="modal">
+            <SignedOut>
+              <SignUpButton mode="modal">
                       <Button className="w-full">Get Started Free</Button>
-                    </SignUpButton>
-                  </SignedOut>
-                  <SignedIn>
-                    <Link href="/dashboard">
+              </SignUpButton>
+            </SignedOut>
+            <SignedIn>
+              <Link href="/dashboard">
                       <Button className="w-full">Go to Dashboard</Button>
-                    </Link>
-                  </SignedIn>
+              </Link>
+            </SignedIn>
                 </CardContent>
               </Card>
 

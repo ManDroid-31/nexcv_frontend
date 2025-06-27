@@ -43,3 +43,6 @@ next-env.d.ts
 
 # new file to be ignored for function-wise summaries
 functionality-summary.md
+
+# clerk configuration (can include secrets)
+/.clerk/

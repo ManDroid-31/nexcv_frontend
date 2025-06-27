@@ -1,138 +1,299 @@
-// ResumePreview.tsx
 "use client"
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { getTemplate } from "./templates";
 import type { ResumeData } from "@/types/resume";
 
-const A4_WIDTH = 794; // px
-const A4_HEIGHT = 1123; // px
+const A4_WIDTH = 794;
+const A4_HEIGHT = 1123;
 const PAGE_MARGIN = 40;
 const HEADER_HEIGHT = 60;
-const FOOTER_HEIGHT = 60;
+const FOOTER_HEIGHT = 8;
 const CONTENT_HEIGHT = A4_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT;
 
 export function ResumePreview({ data, template }: { data: ResumeData; template: string }) {
   const [pages, setPages] = useState<React.ReactNode[][]>([]);
-  const hiddenRef = useRef<HTMLDivElement>(null);
+  const [isMeasuring, setIsMeasuring] = useState(true); // Start with measuring
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const sectionRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const lastDataRef = useRef<string>("");
+  const lastTemplateRef = useRef<string>("");
+  
   const TemplateComponent = getTemplate(template);
+  const sectionOrder = data?.sectionOrder || [];
 
-  const sectionOrder = data.sectionOrder || [];
-  const hiddenBlocks = sectionOrder.map((sectionKey) => (
-    <div key={sectionKey} className="mb-4">
-      <TemplateComponent data={data} sectionsToRender={[sectionKey]} />
-    </div>
-  ));
+  // Memoize the data string to detect actual changes
+  const dataString = useMemo(() => JSON.stringify(data), [data]);
+  
+  // Check if we need to re-measure
+  const needsRemeasuring = useMemo(() => {
+    return !hasInitialized || dataString !== lastDataRef.current || template !== lastTemplateRef.current;
+  }, [dataString, template, hasInitialized]);
 
-  useEffect(() => {
-    if (!hiddenRef.current) return;
-    const container = hiddenRef.current;
-    const blocks = Array.from(container.children) as HTMLElement[];
-    const pageBlocks: React.ReactNode[][] = [[]];
-    let currentHeight = 0;
-    let pageIndex = 0;
+  // Memoize section nodes to prevent unnecessary re-renders
+  const sectionNodes = useMemo(() => 
+    sectionOrder.map((sectionKey, idx) => (
+      <div
+        key={`${sectionKey}-${idx}-${dataString}`}
+        ref={el => { sectionRefs.current[idx] = el; }}
+        style={{ width: A4_WIDTH, boxSizing: "border-box" }}
+      >
+        <TemplateComponent data={data} sectionsToRender={[sectionKey]} />
+      </div>
+    )), [sectionOrder, TemplateComponent, data, dataString]);
 
-    blocks.forEach((el, idx) => {
-      const elHeight = el.offsetHeight;
-
-      if (currentHeight + elHeight <= (pageIndex === 0 ? (A4_HEIGHT - FOOTER_HEIGHT) : CONTENT_HEIGHT)) {
-        pageBlocks[pageIndex].push(
-          <div key={idx} dangerouslySetInnerHTML={{ __html: el.innerHTML }} />
-        );
-        currentHeight += elHeight;
-      } else {
-        // Push to new page
-        pageIndex++;
-        currentHeight = elHeight;
-        pageBlocks[pageIndex] = [
-          <div key={idx} dangerouslySetInnerHTML={{ __html: el.innerHTML }} />
-        ];
+  // Height-based pagination with debouncing
+  const measureAndPaginate = useCallback(() => {
+    if (!needsRemeasuring) return;
+    
+    setIsMeasuring(true);
+    
+    // Use requestIdleCallback for better performance, fallback to requestAnimationFrame
+    const scheduleMeasurement = () => {
+      let currentPage: React.ReactNode[] = [];
+      let currentHeight = 0;
+      const allPages: React.ReactNode[][] = [];
+      
+      sectionRefs.current.forEach((el, idx) => {
+        if (!el) return;
+        const sectionHeight = el.getBoundingClientRect().height;
+        // If section fits, add to current page
+        if (currentHeight + sectionHeight <= CONTENT_HEIGHT || currentHeight === 0) {
+          currentPage.push(sectionNodes[idx]);
+          currentHeight += sectionHeight;
+        } else {
+          // Start new page
+          if (currentPage.length > 0) allPages.push(currentPage);
+          currentPage = [sectionNodes[idx]];
+          currentHeight = sectionHeight;
+        }
+      });
+      if (currentPage.length > 0) allPages.push(currentPage);
+      
+      // If no pages were created, create a single page with all content
+      if (allPages.length === 0 && sectionNodes.length > 0) {
+        allPages.push(sectionNodes);
       }
-    });
+      
+      setPages(allPages);
+      setIsMeasuring(false);
+      setHasInitialized(true);
+      
+      // Update refs to track what we've measured
+      lastDataRef.current = dataString;
+      lastTemplateRef.current = template;
+    };
 
-    setPages(pageBlocks.filter(p => p.length > 0));
-  }, [data, template]);
+    // Use requestIdleCallback if available, otherwise use requestAnimationFrame
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      (window as Window & { requestIdleCallback: (callback: () => void, options?: { timeout: number }) => number }).requestIdleCallback(scheduleMeasurement, { timeout: 100 });
+    } else {
+      requestAnimationFrame(scheduleMeasurement);
+    }
+  }, [needsRemeasuring, sectionNodes, dataString, template]);
 
-  return (
-    <div className="flex flex-col items-center p-4" style={{ background: '#f5f5f5' }}>
-      <div className="w-full max-w-[850px]">
-        {pages.map((pageContent, idx) => (
+  // Effect to trigger measurement when needed
+  useEffect(() => {
+    if (needsRemeasuring) {
+      // For template changes, measure immediately
+      if (template !== lastTemplateRef.current) {
+        measureAndPaginate();
+      } else {
+        // For data changes, use small delay to batch rapid changes
+        const timeoutId = setTimeout(measureAndPaginate, 25);
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [needsRemeasuring, measureAndPaginate, template]);
+
+  // Force initial measurement if no pages exist
+  useEffect(() => {
+    if (pages.length === 0 && !isMeasuring && data) {
+      measureAndPaginate();
+    }
+  }, [pages.length, isMeasuring, data, measureAndPaginate]);
+
+  // Print CSS
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.innerHTML = `
+      @media print {
+        body { background: #fff !important; }
+        .resume-print-page {
+          box-shadow: none !important;
+          border: none !important;
+          background: #fff !important;
+          page-break-after: always;
+          margin: 0 auto !important;
+        }
+        .resume-print-btn, .resume-nonprint { display: none !important; }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
+  
+  // Early return if no data
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center p-4" style={{ background: "#f5f5f5" }}>
+        <div className="w-full max-w-[850px]">
+          <div className="bg-white mb-6 border border-gray-200 flex items-center justify-center" style={{
+            width: A4_WIDTH,
+            height: A4_HEIGHT,
+            boxSizing: "border-box",
+          }}>
+            <div className="text-muted-foreground">No resume data available</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show loading state while measuring
+  if (isMeasuring && pages.length === 0) {
+    return (
+      <div className="flex flex-col items-center p-4" style={{ background: "#f5f5f5" }}>
+        <div className="w-full max-w-[850px]">
+          <div className="bg-white mb-6 border border-gray-200 animate-pulse" style={{
+            width: A4_WIDTH,
+            height: A4_HEIGHT,
+            boxSizing: "border-box",
+          }} />
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback: if no pages exist, render a single page with all content
+  if (pages.length === 0 && data) {
+    return (
+      <div className="flex flex-col items-center p-4" style={{ background: "#f5f5f5" }}>
+        <div className="w-full max-w-[850px]">
           <div
-            key={idx}
-            className="bg-white shadow-lg mb-6 border border-gray-200"
+            className="resume-print-page bg-white mb-6 border border-gray-200"
             style={{
               width: A4_WIDTH,
               height: A4_HEIGHT,
-              boxSizing: 'border-box',
-              color: '#222',
-              background: '#fff',
-              position: 'relative',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
+              boxSizing: "border-box",
+              color: "#222",
+              background: "#fff",
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
             }}
           >
-            {/* Header: only on pages 2+ */}
+            <div
+              style={{
+                flex: 1,
+                padding: PAGE_MARGIN,
+                overflow: "hidden",
+                overflowX: "hidden",
+                background: "#fff",
+                minHeight: CONTENT_HEIGHT,
+                maxHeight: CONTENT_HEIGHT,
+                wordBreak: "break-word",
+                display: "block",
+                boxSizing: "border-box",
+              }}
+            >
+              <TemplateComponent data={data} sectionsToRender={sectionOrder} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render paginated result
+  return (
+    <div className="flex flex-col items-center p-4" style={{ background: "#f5f5f5" }}>
+      <div className="w-full max-w-[850px]">
+        {pages.map((pageContent, idx) => (
+          <div
+            key={`resume-page-${idx}-${dataString}`}
+            className="resume-print-page bg-white mb-6 border border-gray-200"
+            style={{
+              width: A4_WIDTH,
+              height: A4_HEIGHT,
+              boxSizing: "border-box",
+              color: "#222",
+              background: "#fff",
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              pageBreakAfter: "always",
+            }}
+          >
             {idx > 0 && (
               <div
                 style={{
                   height: HEADER_HEIGHT,
                   flexShrink: 0,
-                  borderBottom: '1px solid #eee',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  borderBottom: "1px solid #eee",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   fontWeight: 600,
                   fontSize: 18,
-                  background: '#fff',
-                  color: '#222',
+                  background: "#fff",
+                  color: "#222",
                   letterSpacing: 1,
                 }}
               >
-                {data.personalInfo?.name || 'Resume'}
+                {data.personalInfo?.name || "Resume"}
               </div>
             )}
-            {/* Content */}
             <div
               style={{
                 flex: 1,
                 padding: PAGE_MARGIN,
-                overflow: 'hidden',
-                background: '#fff',
-                minHeight: idx === 0 ? (A4_HEIGHT - FOOTER_HEIGHT) : CONTENT_HEIGHT,
-                maxHeight: idx === 0 ? (A4_HEIGHT - FOOTER_HEIGHT) : CONTENT_HEIGHT,
-                wordBreak: 'break-word',
-                display: 'block',
+                overflow: "hidden",
+                overflowX: "hidden",
+                background: "#fff",
+                minHeight: CONTENT_HEIGHT,
+                maxHeight: CONTENT_HEIGHT,
+                wordBreak: "break-word",
+                display: "block",
+                boxSizing: "border-box",
               }}
             >
               {pageContent}
             </div>
-            {/* Footer: always present, but omit 'Page 1' label on first page */}
             <div
               style={{
                 height: FOOTER_HEIGHT,
                 flexShrink: 0,
-                borderTop: '1.5px solid #2563eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 14,
-                background: '#fff',
-                color: '#222',
+                borderTop: "1px solid #2563eb",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 12,
+                background: "#fff",
+                color: "#222",
                 letterSpacing: 1,
+                marginTop: 8,
+                paddingTop: 2,
               }}
             >
               {idx > 0 ? `Page ${idx + 1}` : null}
             </div>
           </div>
         ))}
-        {/* Hidden container to measure blocks */}
-        <div
-          ref={hiddenRef}
-          style={{ position: 'absolute', left: -9999, top: 0, width: A4_WIDTH - PAGE_MARGIN * 2, visibility: 'hidden', pointerEvents: 'none' }}
-        >
-          {hiddenBlocks}
-        </div>
+      </div>
+      
+      {/* Hidden measurement container */}
+      <div style={{ 
+        position: "absolute", 
+        left: -9999, 
+        top: 0, 
+        visibility: "hidden", 
+        width: A4_WIDTH,
+        pointerEvents: "none"
+      }}>
+        {sectionNodes}
       </div>
     </div>
   );

@@ -4,6 +4,10 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ClerkProvider } from '@clerk/nextjs';
+import { PageTransition, NavigationProgress } from "@/components/page-transition";
+import { UserProvider } from '../providers/UserContext';
+import { ResumeProvider } from '@/providers/ResumeContext';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,13 +23,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
+      {/* TODO: Set signInUrl if you want a custom sign-in page */}
+      <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider>
-          {children}
-          <Toaster />
-        </ThemeProvider>
+          <ThemeProvider>
+            <NavigationProgress />
+            <PageTransition />
+            <UserProvider>
+              <ResumeProvider>
+                {children}
+              </ResumeProvider>
+            </UserProvider>
+            <Toaster />
+          </ThemeProvider>
       </body>
     </html>
+    </ClerkProvider>
   );
 }

@@ -2,7 +2,11 @@ import React from "react";
 import type { TemplateProps } from "../../types/template";
 import type { CustomSection } from "@/types/resume";
 
-export const Ditto = ({ data }: TemplateProps) => {
+// ❗ This template renders resume sections cleanly without pagination logic.
+// Pagination and page-splitting are handled in ResumePreview.tsx based on word/sentence count.
+// Ensure that this renders full sections, not partial content.
+
+export const Ditto = ({ data, sectionsToRender }: TemplateProps) => {
   const renderCustomSectionValue = (section: CustomSection) => {
     // Key-value array
     if (Array.isArray(section.value) && section.value.length > 0 && typeof section.value[0] === 'object' && 'key' in section.value[0] && 'value' in section.value[0]) {
@@ -57,159 +61,151 @@ export const Ditto = ({ data }: TemplateProps) => {
     return <p className="text-gray-700">{section.value as string}</p>;
   };
 
-  // Standard outer margin (not user-editable)
-  const margins = {
-    top: data.layout?.margins?.top ?? 40,
-    bottom: data.layout?.margins?.bottom ?? 40,
-    left: data.layout?.margins?.left ?? 40,
-    right: data.layout?.margins?.right ?? 40
+  const spacing = {
+    sectionGap: data.layout?.spacing?.sectionGap ?? 32,
+    paragraphGap: data.layout?.spacing?.paragraphGap ?? 16,
+    lineHeight: data.layout?.spacing?.lineHeight ?? 1.5
   };
-  const scale = data.layout?.scale ?? 1;
 
-  return (
-    <div
-      style={{
-        margin: `${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px`,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: 0,
-        minWidth: 0,
-      }}
-    >
-      <div
-        className="max-w-[850px] w-full p-8 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg"
-        style={{
-          padding: '40px',
-          transform: `scale(${scale})`,
-          transformOrigin: 'top center',
-        }}
-      >
-        {/* Header with Creative Style */}
-        <header className="mb-8 text-center bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-lg">
+  function renderSectionByKey(key: string) {
+    if (key === 'personalInfo') {
+      return (
+        <header key={key} className="break-inside-avoid mb-6">
           <h1 className="text-5xl font-bold mb-3">{data.personalInfo.name}</h1>
-          <div className="text-lg space-y-1 opacity-90">
+          <div className="text-lg space-y-1 opacity-90" style={{ lineHeight: spacing.lineHeight }}>
             <p>{data.personalInfo.email}</p>
             <p>{data.personalInfo.phone}</p>
             <p>{data.personalInfo.location}</p>
           </div>
         </header>
-
-        {/* Summary */}
-        {data.summary && (
-          <section className="mb-8 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold mb-4 text-purple-700 border-b-2 border-purple-200 pb-2">About Me</h2>
-            <p className="text-gray-700 leading-relaxed">{data.summary}</p>
-          </section>
-        )}
-
-        {/* Experience */}
-        {data.experience && data.experience.length > 0 && (
-          <section className="mb-8 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold mb-4 text-purple-700 border-b-2 border-purple-200 pb-2">Experience</h2>
-            <div className="space-y-6">
-              {data.experience.map((exp) => (
-                <div key={exp.id} className="border-l-4 border-purple-400 pl-4 bg-gradient-to-r from-purple-50 to-transparent p-4 rounded-r-lg">
-                  <h3 className="text-xl font-bold text-gray-900">{exp.position}</h3>
-                  <div className="text-purple-600 mb-2">
-                    <span className="font-semibold">{exp.company}</span>
-                    {exp.startDate && (
-                      <span className="ml-2">• {exp.startDate} - {exp.endDate || 'Present'}</span>
-                    )}
-                  </div>
-                  <p className="text-gray-700 leading-relaxed">{exp.description}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Education */}
-        {data.education && data.education.length > 0 && (
-          <section className="mb-8 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold mb-4 text-purple-700 border-b-2 border-purple-200 pb-2">Education</h2>
-            <div className="space-y-4">
-              {data.education.map((edu) => (
-                <div key={edu.id} className="border-l-4 border-purple-400 pl-4 bg-gradient-to-r from-purple-50 to-transparent p-4 rounded-r-lg">
-                  <h3 className="text-xl font-bold text-gray-900">{edu.degree}</h3>
-                  <div className="text-purple-600">
-                    <span className="font-semibold">{edu.school}</span>
-                    {edu.startDate && (
-                      <span className="ml-2">• {edu.startDate} - {edu.endDate || 'Present'}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Skills */}
-        {data.skills && data.skills.length > 0 && (
-          <section className="mb-8 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold mb-4 text-purple-700 border-b-2 border-purple-200 pb-2">Skills</h2>
-            <div className="flex flex-wrap gap-3">
-              {data.skills.map((skill, index) => (
-                <span
-                  key={index}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-shadow"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Projects */}
-        {data.projects && data.projects.length > 0 && (
-          <section className="mb-8 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold mb-4 text-purple-700 border-b-2 border-purple-200 pb-2">Projects</h2>
-            <div className="space-y-6">
-              {data.projects.map((project) => (
-                <div key={project.id} className="border-l-4 border-purple-400 pl-4 bg-gradient-to-r from-purple-50 to-transparent p-4 rounded-r-lg">
-                  <h3 className="text-xl font-bold text-gray-900">{project.name}</h3>
-                  {(project.liveUrl || project.githubUrl) && (
-                    <div className="text-sm text-purple-600 mb-2">
-                      {project.liveUrl && (
-                        <a href={project.liveUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 underline mr-4">
-                          Live Demo
-                        </a>
-                      )}
-                      {project.githubUrl && (
-                        <a href={project.githubUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 underline">
-                          GitHub
-                        </a>
-                      )}
-                    </div>
-                  )}
-                  <p className="text-gray-700 mb-3 leading-relaxed">{project.description}</p>
-                  {project.technologies && project.technologies.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {project.technologies.map((tech, index) => (
-                        <span
-                          key={index}
-                          className="bg-gradient-to-r from-pink-400 to-purple-400 text-white px-3 py-1 rounded-full text-sm font-medium"
-                        >
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
+      );
+    }
+    if (key === 'summary' && data.summary) {
+      return (
+        <section key={key} className="break-inside-avoid mb-6">
+          <h2 className="text-lg font-semibold mb-3 text-gray-900 uppercase tracking-wide">Summary</h2>
+          <p className="text-gray-700 leading-relaxed" style={{ lineHeight: spacing.lineHeight }}>{data.summary}</p>
+        </section>
+      );
+    }
+    if (key === 'experience' && data.experience?.length) {
+      return (
+        <section key={key} className="break-inside-avoid mb-6">
+          <h2 className="text-2xl font-bold mb-4 text-purple-700 border-b-2 border-purple-200 pb-2">Experience</h2>
+          <div className="space-y-6">
+            {data.experience.map((exp) => (
+              <div key={exp.id} className="border-l-4 border-purple-400 pl-4 bg-gradient-to-r from-purple-50 to-transparent p-4 rounded-r-lg">
+                <h3 className="text-xl font-bold text-gray-900">{exp.position}</h3>
+                <div className="text-purple-600 mb-2">
+                  <span className="font-semibold">{exp.company}</span>
+                  {exp.startDate && (
+                    <span className="ml-2">• {exp.startDate} - {exp.endDate || 'Present'}</span>
                   )}
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+                <p className="text-gray-700 leading-relaxed" style={{ lineHeight: spacing.lineHeight }}>{exp.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    if (key === 'education' && data.education?.length) {
+      return (
+        <section key={key} className="break-inside-avoid mb-6">
+          <h2 className="text-2xl font-bold mb-4 text-purple-700 border-b-2 border-purple-200 pb-2">Education</h2>
+          <div className="space-y-4">
+            {data.education.map((edu) => (
+              <div key={edu.id} className="border-l-4 border-purple-400 pl-4 bg-gradient-to-r from-purple-50 to-transparent p-4 rounded-r-lg">
+                <h3 className="text-xl font-bold text-gray-900">{edu.degree}</h3>
+                <div className="text-purple-600">
+                  <span className="font-semibold">{edu.school}</span>
+                  {edu.startDate && (
+                    <span className="ml-2">• {edu.startDate} - {edu.endDate || 'Present'}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    if (key === 'skills' && data.skills?.length) {
+      return (
+        <section key={key} className="break-inside-avoid mb-6">
+          <h2 className="text-2xl font-bold mb-4 text-purple-700 border-b-2 border-purple-200 pb-2">Skills</h2>
+          <div className="flex flex-wrap gap-3">
+            {data.skills.map((skill, index) => (
+              <span
+                key={index}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-shadow"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    if (key === 'projects' && data.projects?.length) {
+      return (
+        <section key={key} className="break-inside-avoid mb-6">
+          <h2 className="text-2xl font-bold mb-4 text-purple-700 border-b-2 border-purple-200 pb-2">Projects</h2>
+          <div className="space-y-6">
+            {data.projects.map((project) => (
+              <div key={project.id} className="border-l-4 border-purple-400 pl-4 bg-gradient-to-r from-purple-50 to-transparent p-4 rounded-r-lg">
+                <h3 className="text-xl font-bold text-gray-900">{project.name}</h3>
+                {(project.liveUrl || project.githubUrl) && (
+                  <div className="text-sm text-purple-600 mb-2">
+                    {project.liveUrl && (
+                      <a href={project.liveUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 underline mr-4">
+                        Live Demo
+                      </a>
+                    )}
+                    {project.githubUrl && (
+                      <a href={project.githubUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 underline">
+                        GitHub
+                      </a>
+                    )}
+                  </div>
+                )}
+                <p className="text-gray-700 mb-3 leading-relaxed" style={{ lineHeight: spacing.lineHeight }}>{project.description}</p>
+                {project.technologies && project.technologies.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {project.technologies.map((tech, index) => (
+                      <span
+                        key={index}
+                        className="bg-gradient-to-r from-pink-400 to-purple-400 text-white px-3 py-1 rounded-full text-sm font-medium"
+                      >
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    if (key.startsWith('custom:')) {
+      const id = key.replace('custom:', '');
+      const section = data.customSections?.find(cs => cs.id === id);
+      if (!section) return null;
+      return (
+        <section key={key} className="break-inside-avoid mb-6">
+          <h2 className="text-2xl font-bold mb-4 text-purple-700 border-b-2 border-purple-200 pb-2">{section.name}</h2>
+          {renderCustomSectionValue(section)}
+        </section>
+      );
+    }
+    return null;
+  }
 
-        {/* Custom Sections */}
-        {data.customSections && data.customSections.map((section) => (
-          <section key={section.id} className="mb-8 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold mb-4 text-purple-700 border-b-2 border-purple-200 pb-2">{section.name}</h2>
-            {renderCustomSectionValue(section)}
-          </section>
-        ))}
-      </div>
+  const sectionsToRenderList = sectionsToRender || data.sectionOrder || [];
+
+  return (
+    <div className="space-y-6 break-words mr-10">
+      {sectionsToRenderList.map(renderSectionByKey)}
     </div>
   );
 };

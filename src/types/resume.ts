@@ -89,6 +89,7 @@ export interface Layout {
 }
 
 export interface ResumeData {
+  id?: string;
   title: string;
   slug: string;
   isPublic: boolean;
@@ -103,4 +104,9 @@ export interface ResumeData {
   skills: string[];
   customSections: CustomSection[];
   sectionOrder: string[];
+  status?: string;
+  views?: number;
+  updatedAt?: string;
+  templateInfo?: Record<string, unknown> | null;
+  availableTemplates?: Record<string, unknown> | null;
 } 

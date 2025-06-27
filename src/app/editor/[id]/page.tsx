@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-
+import { useUser } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
 
 // component dependencies
 
@@ -58,6 +59,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import type { editor } from 'monaco-editor'
 import { getTemplateDefaultLayout } from '@/components/templates'
+import { getResumeById } from '@/data/resume'
 
 // Dynamically import Monaco Editor with no SSR
 const MonacoEditor = dynamic(
@@ -273,11 +275,16 @@ export default function ResumeEditor({ params }: PageProps) {
   // Use the unified resume store
   const {
     resumeData,
+    getPreviewData,
     isLoading,
     error,
     setResumeData,
-    updateResumeData
+    updateResumeData,
+    saveResume
   } = useResumeStore()
+
+  const { user } = useUser()
+  const userId = user?.id
 
   const totalPages = RESUME_SECTIONS.length
 
@@ -396,15 +403,41 @@ export default function ResumeEditor({ params }: PageProps) {
     setIsFullscreen(prev => !prev)
   }
 
-  const handleSave = async () => {
-    if (!resumeData) return
-    try {
-      // TODO: Implement save functionality
-      toast.success('Resume saved successfully')
-    } catch {
-      toast.error('Failed to save resume')
+  // Add a top-level loading state for page transitions
+  const [pageLoading, setPageLoading] = useState(false)
+  const router = useRouter()
+
+  // Show loading animation on route change
+  useEffect(() => {
+    const handleStart = () => setPageLoading(true)
+    const handleComplete = () => setPageLoading(false)
+    router.events?.on('routeChangeStart', handleStart)
+    router.events?.on('routeChangeComplete', handleComplete)
+    router.events?.on('routeChangeError', handleComplete)
+    return () => {
+      router.events?.off('routeChangeStart', handleStart)
+      router.events?.off('routeChangeComplete', handleComplete)
+      router.events?.off('routeChangeError', handleComplete)
     }
-  }
+  }, [router])
+
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!resumeData || !userId) return;
+    setSaving(true);
+    try {
+      await saveResume(resumeData, userId, resumeId);
+      // Refetch the latest resume from the backend
+      const updated = await getResumeById(resumeId, userId);
+      setResumeData(updated);
+      toast.success('Resume saved successfully');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save resume');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleAddSection = (sectionName: string, sectionType: string) => {
     if (!sectionName) {
@@ -1382,51 +1415,18 @@ export default function ResumeEditor({ params }: PageProps) {
 
   // Update the initial resume data with proper types
   useEffect(() => {
-    if (resumeId) {
-      setResumeData({
-        title: "Software Engineer Resume",
-        slug: "software-engineer-resume",
-        isPublic: true,
-        template: "onyx",
-        tags: [],
-        layout: {
-          margins: {
-            top: 40,
-            bottom: 40,
-            left: 40,
-            right: 40
-          },
-          spacing: {
-            sectionGap: 24,
-            paragraphGap: 12,
-            lineHeight: 1.5
-          },
-          scale: 1
-        },
-        personalInfo: {
-          name: "John Doe",
-          email: "john@example.com",
-          phone: "+1 (555) 123-4567",
-          location: "San Francisco, CA"
-        },
-        summary: "",
-        experience: [{
-          id: Date.now().toString(),
-          position: "Software Engineer",
-          company: "Example Corp",
-          startDate: "2023-01",
-          endDate: "2023-06",
-          description: "Developed and maintained web applications using modern technologies.",
-          tags: []
-        }],
-        skills: ["JavaScript", "React", "Node.js", "Python", "AWS"],
-        education: [],
-        projects: [],
-        customSections: [],
-        sectionOrder: ["personalInfo", "summary", "experience", "education", "projects", "skills"]
-      });
+    if (resumeId && userId) {
+      (async () => {
+        try {
+          const data = await getResumeById(resumeId, userId);
+          setResumeData(data);
+        } catch {
+          setResumeData(null);
+          toast.error('Failed to load resume');
+        }
+      })();
     }
-  }, [resumeId, setResumeData]);
+  }, [resumeId, userId, setResumeData]);
 
   // Add this function to get default layout for the current template
   const handleResetLayout = () => {
@@ -1440,8 +1440,8 @@ export default function ResumeEditor({ params }: PageProps) {
     toast.success('Layout reset to template default!');
   };
 
-  if (isLoading) {
-    return <div>Loading...</div>
+  if (isLoading || pageLoading) {
+    return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
   }
 
   if (error) {
@@ -1463,6 +1463,7 @@ export default function ResumeEditor({ params }: PageProps) {
           onAIClick={() => setIsAISidebarOpen(true)}
           onSaveClick={handleSave}
           onExportClick={() => setIsExportModalOpen(true)}
+          saving={saving}
         />
         {/* Reset Layout Button */}
         <div className="flex justify-end px-6 pt-4">
@@ -1772,7 +1773,16 @@ export default function ResumeEditor({ params }: PageProps) {
                   height: `${100 / (zoomLevel / 100)}%`
                 }}
               >
-              <ResumePreview data={resumeData} template={resumeData.template} />
+              {resumeData ? (
+                <ResumePreview 
+                  data={getPreviewData() || resumeData} 
+                  template={resumeData.template || 'modern'} 
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-muted-foreground">Loading resume data...</div>
+                </div>
+              )}
             </div>
           </div>
           )}

@@ -45,85 +45,39 @@ function renderValue(value: unknown): React.ReactNode {
   return null;
 }
 
-export const Pikachu = ({ data }: TemplateProps) => {
+export const Pikachu = ({ data, sectionsToRender }: TemplateProps) => {
   const renderCustomSectionValue = (section: CustomSection) => renderValue(section.value);
 
-  // Standard outer padding (not user-editable)
-  const margins = {
-    top: data.layout?.margins?.top ?? 40,
-    bottom: data.layout?.margins?.bottom ?? 40,
-    left: data.layout?.margins?.left ?? 40,
-    right: data.layout?.margins?.right ?? 40
-  };
-  // User-controlled internal spacing
   const spacing = {
     sectionGap: data.layout?.spacing?.sectionGap ?? 32,
     paragraphGap: data.layout?.spacing?.paragraphGap ?? 16,
     lineHeight: data.layout?.spacing?.lineHeight ?? 1.5
   };
-  const scale = data.layout?.scale ?? 1;
 
-  return (
-    <div
-      className="max-w-[850px] mx-auto bg-gradient-to-br from-yellow-50 to-orange-50 shadow-lg"
-      style={{
-        padding: `${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px`,
-        transform: `scale(${scale})`,
-        transformOrigin: 'top center'
-      }}
-    >
-      {/* Header with Energetic Style */}
-      <header
-        style={{
-          marginBottom: `${spacing.sectionGap}px`,
-          textAlign: 'center',
-          background: 'linear-gradient(to right, #facc15, #fb923c)',
-          color: 'white',
-          padding: '24px',
-          borderRadius: '1rem',
-          boxShadow: '0 4px 24px 0 rgba(0,0,0,0.10)'
-        }}
-      >
-        <h1 className="text-5xl font-bold" style={{ marginBottom: `${spacing.paragraphGap}px` }}>{data.personalInfo.name}</h1>
-        <div className="text-lg opacity-90" style={{ lineHeight: spacing.lineHeight }}>
-          <p style={{ marginBottom: `${spacing.paragraphGap/2}px` }}>{data.personalInfo.email}</p>
-          <p style={{ marginBottom: `${spacing.paragraphGap/2}px` }}>{data.personalInfo.phone}</p>
-          <p>{data.personalInfo.location}</p>
-        </div>
-      </header>
-
-      {/* Summary */}
-      {data.summary && (
-        <section
-          style={{
-            marginBottom: `${spacing.sectionGap}px`,
-            background: 'white',
-            padding: '24px',
-            borderRadius: '1rem',
-            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.06)'
-          }}
-        >
-          <h2
-            className="text-2xl font-bold text-orange-600 border-b-2 border-orange-200 pb-2"
-            style={{ marginBottom: `${spacing.paragraphGap}px` }}
-          >
-            About Me
-          </h2>
+  function renderSectionByKey(key: string) {
+    if (key === 'personalInfo') {
+      return (
+        <header key={key} className="break-inside-avoid">
+          <h1 className="text-5xl font-bold" style={{ marginBottom: `${spacing.paragraphGap}px` }}>{data.personalInfo.name}</h1>
+          <div className="text-lg opacity-90" style={{ lineHeight: spacing.lineHeight }}>
+            <p style={{ marginBottom: `${spacing.paragraphGap/2}px` }}>{data.personalInfo.email}</p>
+            <p style={{ marginBottom: `${spacing.paragraphGap/2}px` }}>{data.personalInfo.phone}</p>
+            <p>{data.personalInfo.location}</p>
+          </div>
+        </header>
+      );
+    }
+    if (key === 'summary' && data.summary) {
+      return (
+        <section key={key} className="break-inside-avoid">
+          <h2 className="text-xl font-bold mb-2 text-yellow-700 border-b-2 border-yellow-300 pb-1">Summary</h2>
           <p className="text-gray-700" style={{ lineHeight: spacing.lineHeight }}>{data.summary}</p>
         </section>
-      )}
-
-      {/* Experience */}
-      {data.experience && data.experience.length > 0 && (
-        <section
-          style={{
-            marginBottom: `${spacing.sectionGap}px`,
-            background: 'white',
-            padding: '24px',
-            borderRadius: '1rem',
-            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.06)'
-          }}
-        >
+      );
+    }
+    if (key === 'experience' && data.experience?.length) {
+      return (
+        <section key={key} className="break-inside-avoid">
           <h2
             className="text-2xl font-bold text-orange-600 border-b-2 border-orange-200 pb-2"
             style={{ marginBottom: `${spacing.paragraphGap}px` }}
@@ -154,19 +108,11 @@ export const Pikachu = ({ data }: TemplateProps) => {
             ))}
           </div>
         </section>
-      )}
-
-      {/* Education */}
-      {data.education && data.education.length > 0 && (
-        <section
-          style={{
-            marginBottom: `${spacing.sectionGap}px`,
-            background: 'white',
-            padding: '24px',
-            borderRadius: '1rem',
-            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.06)'
-          }}
-        >
+      );
+    }
+    if (key === 'education' && data.education?.length) {
+      return (
+        <section key={key} className="break-inside-avoid">
           <h2
             className="text-2xl font-bold text-orange-600 border-b-2 border-orange-200 pb-2"
             style={{ marginBottom: `${spacing.paragraphGap}px` }}
@@ -196,19 +142,11 @@ export const Pikachu = ({ data }: TemplateProps) => {
             ))}
           </div>
         </section>
-      )}
-
-      {/* Skills */}
-      {data.skills && data.skills.length > 0 && (
-        <section
-          style={{
-            marginBottom: `${spacing.sectionGap}px`,
-            background: 'white',
-            padding: '24px',
-            borderRadius: '1rem',
-            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.06)'
-          }}
-        >
+      );
+    }
+    if (key === 'skills' && data.skills?.length) {
+      return (
+        <section key={key} className="break-inside-avoid">
           <h2
             className="text-2xl font-bold text-orange-600 border-b-2 border-orange-200 pb-2"
             style={{ marginBottom: `${spacing.paragraphGap}px` }}
@@ -227,19 +165,11 @@ export const Pikachu = ({ data }: TemplateProps) => {
             ))}
           </div>
         </section>
-      )}
-
-      {/* Projects */}
-      {data.projects && data.projects.length > 0 && (
-        <section
-          style={{
-            marginBottom: `${spacing.sectionGap}px`,
-            background: 'white',
-            padding: '24px',
-            borderRadius: '1rem',
-            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.06)'
-          }}
-        >
+      );
+    }
+    if (key === 'projects' && data.projects?.length) {
+      return (
+        <section key={key} className="break-inside-avoid">
           <h2
             className="text-2xl font-bold text-orange-600 border-b-2 border-orange-200 pb-2"
             style={{ marginBottom: `${spacing.paragraphGap}px` }}
@@ -273,14 +203,13 @@ export const Pikachu = ({ data }: TemplateProps) => {
                     )}
                   </div>
                 )}
-                <p className="text-gray-700" style={{ marginBottom: `${spacing.paragraphGap/2}px`, lineHeight: spacing.lineHeight }}>{project.description}</p>
+                <p className="text-gray-700" style={{ lineHeight: spacing.lineHeight, marginBottom: `${spacing.paragraphGap/2}px` }}>{project.description}</p>
                 {project.technologies && project.technologies.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {project.technologies.map((tech, index) => (
                       <span
                         key={index}
                         className="bg-gradient-to-r from-orange-400 to-yellow-400 text-white px-3 py-1 rounded-full text-sm font-medium"
-                        style={{ lineHeight: spacing.lineHeight }}
                       >
                         {tech}
                       </span>
@@ -291,20 +220,14 @@ export const Pikachu = ({ data }: TemplateProps) => {
             ))}
           </div>
         </section>
-      )}
-
-      {/* Custom Sections */}
-      {data.customSections && data.customSections.map((section) => (
-        <section
-          key={section.id}
-          style={{
-            marginBottom: `${spacing.sectionGap}px`,
-            background: 'white',
-            padding: '24px',
-            borderRadius: '1rem',
-            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.06)'
-          }}
-        >
+      );
+    }
+    if (key.startsWith('custom:')) {
+      const id = key.replace('custom:', '');
+      const section = data.customSections?.find(cs => cs.id === id);
+      if (!section) return null;
+      return (
+        <section key={key} className="break-inside-avoid">
           <h2
             className="text-2xl font-bold text-orange-600 border-b-2 border-orange-200 pb-2"
             style={{ marginBottom: `${spacing.paragraphGap}px` }}
@@ -313,7 +236,16 @@ export const Pikachu = ({ data }: TemplateProps) => {
           </h2>
           {renderCustomSectionValue(section)}
         </section>
-      ))}
+      );
+    }
+    return null;
+  }
+
+  const sectionsToRenderList = sectionsToRender || data.sectionOrder || [];
+
+  return (
+    <div className="space-y-6 break-words mr-10">
+      {sectionsToRenderList.map(renderSectionByKey)}
     </div>
   );
 };
