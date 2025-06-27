@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect } from "react"
 import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
+import { toast } from 'sonner'
+import React from 'react'
 
 // component dependencies
 
@@ -26,19 +29,10 @@ import {
   GripVertical,
 } from "lucide-react"
 import { ResumePreview } from "@/components/resume-preview"
-import { AISidebar } from "@/components/ai-sidebar"
 import { TemplateSelector } from "@/components/template-selector"
 import { ExportModal } from "@/components/export-modal"  //used for eport card
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { EditorHeader } from "@/components/editor-header"
-
-// 
-
-import dynamic from 'next/dynamic'
-import { toast } from "sonner"
-import { useResumeStore } from '@/stores/resume-store'
-import { use } from 'react'
-import { CustomSection, KeyValuePair, ArrayObjectItem, CustomSectionValue, ResumeData } from '@/types/resume'
 import {
   DndContext,
   closestCenter,
@@ -60,6 +54,9 @@ import { CSS } from '@dnd-kit/utilities'
 import type { editor } from 'monaco-editor'
 import { getTemplateDefaultLayout } from '@/components/templates'
 import { getResumeById } from '@/data/resume'
+import { AIPanel } from '@/components/ai-panel'
+import { ResumeData, CustomSection, CustomSectionValue, KeyValuePair, ArrayObjectItem } from '@/types/resume'
+import { useResumeStore } from '@/stores/resume-store'
 
 // Dynamically import Monaco Editor with no SSR
 const MonacoEditor = dynamic(
@@ -69,9 +66,9 @@ const MonacoEditor = dynamic(
 
 type EditMode = "form" | "json" | "paged-form"
 
-interface PageProps {
-  params: Promise<{ id: string }>
-}
+type PageProps = {
+  params: { id: string }
+};
 
 // Define the sections and their order
 const RESUME_SECTIONS = [
@@ -174,7 +171,6 @@ function DraggableSection({
 
 // Add type safety for dynamic object access
 type ResumeKey = keyof ResumeData;
-type CustomSectionKey = string;
 
 // Helper to check if a string is a valid section name
 const isValidSectionName = (name: string): name is keyof ResumeData => {
@@ -191,8 +187,6 @@ const isValidSectionName = (name: string): name is keyof ResumeData => {
     'education',
     'projects',
     'skills',
-    'customSections',
-    'sectionOrder'
   ] as const;
   return validSections.includes(name as keyof ResumeData);
 };
@@ -254,11 +248,11 @@ function restoreIdsFromOriginal(original: ResumeData, edited: ResumeData): Resum
 
 // main function and last 
 export default function ResumeEditor({ params }: PageProps) {
-  const { id: resumeId } = use(params)      //set id as resumeId 
+  // Unwrap params using React.use() for Next.js compatibility
+  const { id: resumeId } = React.use(params);
   const [editMode, setEditMode] = useState<EditMode>("form")
 
   //UI componeents state handlers
-  const [isAISidebarOpen, setIsAISidebarOpen] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
 
@@ -511,7 +505,7 @@ export default function ResumeEditor({ params }: PageProps) {
   };
 
   // Update the renderFormField function
-  const renderFormField = (key: ResumeKey | CustomSectionKey, value: unknown) => {
+  const renderFormField = (key: string, value: unknown) => {
     // Find if this is a custom section
     const customSection = resumeData?.customSections?.find(section => 
       section.name?.toLowerCase().replace(/\s+/g, '') === key
@@ -1235,7 +1229,15 @@ export default function ResumeEditor({ params }: PageProps) {
   // Update the form fields rendering to use DraggableSection
   const renderFormFields = () => {
     if (!resumeData) return null
-    const sectionOrder = resumeData.sectionOrder || [];
+    const allowedKeys = [
+      'personalInfo', 'summary', 'experience', 'education', 'projects', 'skills'
+    ];
+    function isResumeKeyStrict(key: any): key is ResumeKey {
+      return allowedKeys.includes(String(key));
+    }
+    const sectionOrder = (resumeData?.sectionOrder || []).filter(k => k !== 'id');
+    const validSectionOrder = sectionOrder.filter((key): key is ResumeKey => isResumeKeyStrict(key));
+    const customSectionOrder = sectionOrder.filter(key => key.startsWith('custom:'));
     return (
 
 
@@ -1249,39 +1251,37 @@ export default function ResumeEditor({ params }: PageProps) {
           const { active, over } = event;
           setActiveSectionId(null);
           if (over && active.id !== over.id) {
-            const oldIndex = sectionOrder.indexOf(active.id as string);
-            const newIndex = sectionOrder.indexOf(over.id as string);
-            const newOrder = arrayMove(sectionOrder, oldIndex, newIndex);
+            const oldIndex = validSectionOrder.indexOf(active.id as string);
+            const newIndex = validSectionOrder.indexOf(over.id as string);
+            const newOrder = arrayMove(validSectionOrder, oldIndex, newIndex);
             updateResumeData({ sectionOrder: newOrder });
           }
         }}
       >
         <SortableContext
-          items={sectionOrder}
+          items={validSectionOrder}
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-6">
-            {sectionOrder.map((key) => {
-              // Main section
-              if (!key.startsWith('custom:')) {
-                if (["title", "slug", "isPublic", "template"].includes(key)) return null
-                const value = getSectionValue(key);
-                if (value === undefined) return null;
-                return (
-                  <DraggableSection
-                    key={key}
-                    id={key}
-                    title={key.charAt(0).toUpperCase() + key.slice(1)}
-                  >
-                    {renderFormField(key as ResumeKey, value)}
-                  </DraggableSection>
-                )
-              }
+            {/* Main sections */}
+            {validSectionOrder.map((key) => {
+              const value = getSectionValue(key);
+              if (value === undefined) return null;
+              return (
+                <DraggableSection
+                  key={key}
+                  id={key}
+                  title={key.charAt(0).toUpperCase() + key.slice(1)}
+                >
+                  {renderFormField(key as ResumeKey, value)}
+                </DraggableSection>
+              );
+            })}
 
-
-              // Custom section
+            {/* Custom sections */}
+            {customSectionOrder.map((key) => {
               const customId = key.replace('custom:', '')
-              const customSection = resumeData.customSections?.find(s => s.id === customId)
+              const customSection = resumeData.customSections?.find((s: CustomSection) => s.id === customId)
               if (!customSection) return null
               return (
                 <DraggableSection
@@ -1290,18 +1290,18 @@ export default function ResumeEditor({ params }: PageProps) {
                   title={customSection.name}
                   onTitleChange={newName => {
                     // Update custom section name and sectionOrder
-                    const updatedSections = resumeData.customSections.map(s =>
+                    const updatedSections = resumeData.customSections.map((s: CustomSection) =>
                       s.id === customSection.id ? { ...s, name: newName } : s
                     );
-                    const updatedOrder = sectionOrder.map(k =>
+                    const updatedOrder = [...validSectionOrder, ...customSectionOrder].map(k =>
                       k === key ? `custom:${customSection.id}` : k
                     );
                     updateResumeData({ customSections: updatedSections, sectionOrder: updatedOrder });
                   }}
                 >
-                  {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, '') as ResumeKey, customSection.value)}
+                  {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, '') as string, customSection.value)}
                 </DraggableSection>
-              )
+              );
             })}
 
 
@@ -1382,7 +1382,7 @@ export default function ResumeEditor({ params }: PageProps) {
                   id={activeSectionId}
                   title={customSection.name}
                 >
-                  {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, '') as ResumeKey, customSection.value)}
+                  {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, '') as string, customSection.value)}
                 </DraggableSection>
               </div>
             )
@@ -1403,9 +1403,13 @@ export default function ResumeEditor({ params }: PageProps) {
           const value = editor.getValue();
           const parsed = JSON.parse(value);
           // Patch: restore ids from original data
-          const safeParsed = restoreIdsFromOriginal(resumeData, parsed);
-          setResumeData(safeParsed);
-          toast.success("JSON is valid");
+          if (resumeData) {
+            const safeParsed = restoreIdsFromOriginal(resumeData, parsed);
+            setResumeData(safeParsed);
+            toast.success("JSON is valid");
+          } else {
+            toast.error("Cannot update: original resume data is missing.");
+          }
         } catch {
           toast.error("Invalid JSON format");
         }
@@ -1440,6 +1444,51 @@ export default function ResumeEditor({ params }: PageProps) {
     toast.success('Layout reset to template default!');
   };
 
+  // Add AI Drawer Panel State
+  const [aiDrawerHovered, setAIDrawerHovered] = useState(false);
+  const [aiMessage, setAIMessage] = useState("");
+  const [aiIsLoading, setAIIsLoading] = useState(false);
+  const [aiSuggestions, setAISuggestions] = useState([
+    {
+      id: "1",
+      type: "improvement",
+      title: "Enhance your summary",
+      description: "Your professional summary could be more impactful with specific achievements.",
+      action: "Improve Summary",
+      status: "pending",
+    },
+    {
+      id: "2",
+      type: "missing",
+      title: "Add skills section",
+      description: "Consider adding more technical skills relevant to your field.",
+      action: "Add Skills",
+      status: "pending",
+    },
+    {
+      id: "3",
+      type: "grammar",
+      title: "Grammar improvements",
+      description: "Found 2 minor grammar issues in your experience section.",
+      action: "Fix Grammar",
+      status: "completed",
+    },
+  ]);
+
+  const handleAISendMessage = async () => {
+    if (!aiMessage.trim()) return;
+    setAIIsLoading(true);
+    // Simulate AI response
+    setTimeout(() => {
+      setAIMessage("");
+      setAIIsLoading(false);
+    }, 2000);
+  };
+
+  const applyAISuggestion = (suggestionId: string) => {
+    setAISuggestions(aiSuggestions.map((s) => (s.id === suggestionId ? { ...s, status: "completed" } : s)));
+  };
+
   if (isLoading || pageLoading) {
     return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
   }
@@ -1460,7 +1509,6 @@ export default function ResumeEditor({ params }: PageProps) {
           isPublic={resumeData.isPublic}
           onTitleChange={(title) => updateResumeData({ title })}
           onTemplateClick={() => setIsTemplateModalOpen(true)}
-          onAIClick={() => setIsAISidebarOpen(true)}
           onSaveClick={handleSave}
           onExportClick={() => setIsExportModalOpen(true)}
           saving={saving}
@@ -1789,13 +1837,6 @@ export default function ResumeEditor({ params }: PageProps) {
         </div>
 
         {/* Modals */}
-        <AISidebar
-          isOpen={isAISidebarOpen}
-          onClose={() => setIsAISidebarOpen(false)}
-          resumeData={resumeData}
-          onUpdateResume={updateResumeData}
-        />
-
         <TemplateSelector
           isOpen={isTemplateModalOpen}
           onClose={() => setIsTemplateModalOpen(false)}
@@ -1807,6 +1848,18 @@ export default function ResumeEditor({ params }: PageProps) {
         />
 
         <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} resumeData={resumeData} />
+
+        {/* Replace the inline AI panel with the AIPanel component */}
+        <AIPanel
+          aiDrawerHovered={aiDrawerHovered}
+          setAIDrawerHovered={setAIDrawerHovered}
+          aiMessage={aiMessage}
+          setAIMessage={setAIMessage}
+          aiIsLoading={aiIsLoading}
+          aiSuggestions={aiSuggestions}
+          applyAISuggestion={applyAISuggestion}
+          handleAISendMessage={handleAISendMessage}
+        />
       </div>
     </AuthProvider>
   )

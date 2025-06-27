@@ -88,10 +88,10 @@ export default function LandingPage() {
                 <div className="flex gap-4 items-center">
               <SignedOut>
                     <SignUpButton mode="modal">
-                      <button className="btn btn-primary">Sign Up</button>
+                      <button className="btn btn-primary cursor-pointer">Sign Up</button>
                     </SignUpButton>
                 <SignInButton mode="modal">
-                      <button className="btn btn-secondary">Log In</button>
+                      <button className="btn btn-secondary cursor-pointer">Log In</button>
                 </SignInButton>
               </SignedOut>
               <SignedIn>

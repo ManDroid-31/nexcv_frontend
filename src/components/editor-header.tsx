@@ -10,7 +10,7 @@ interface EditorHeaderProps {
   isPublic: boolean
   onTitleChange: (title: string) => void
   onTemplateClick: () => void
-  onAIClick: () => void
+  onAIClick?: () => void
   onSaveClick: () => void
   onExportClick: () => void
   saving?: boolean
@@ -56,10 +56,12 @@ export function EditorHeader({
             <LayoutTemplate className="w-4 h-4 mr-2" />
             Templates
           </Button>
-          <Button variant="outline" size="sm" onClick={onAIClick}>
-            <Sparkles className="w-4 h-4 mr-2" />
-            AI Assistant
-          </Button>
+          {onAIClick && (
+            <Button variant="outline" size="sm" onClick={onAIClick}>
+              <Sparkles className="w-4 h-4 mr-2" />
+              AI Assistant
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onSaveClick} disabled={saving}>
             {saving ? <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2 inline-block" /> : <Save className="w-4 h-4 mr-2" />}
             Save
