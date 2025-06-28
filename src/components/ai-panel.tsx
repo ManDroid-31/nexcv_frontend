@@ -1,87 +1,144 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
-import { Target, Lightbulb, CheckCircle, Clock, Send, Sparkles, Bot, ChevronUp, ChevronDown } from "lucide-react"
+import { useState, useRef, useLayoutEffect, useMemo } from "react"
+import { Send, Sparkles, Bot, ChevronUp, ChevronDown, CheckCircle, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-
-interface AISuggestion {
-  id: string
-  type: string
-  title: string
-  description: string
-  action: string
-  status: string
-}
+import { useAIStore } from '@/stores/ai-store';
+import { useResumeStore } from '@/stores/resume-store';
+import { useUser} from "@clerk/nextjs"
+import ReactMarkdown from 'react-markdown';
+import { ResumeData } from '@/types/resume';
+import { toast } from 'sonner';
 
 interface AIPanelProps {
-  setAIDrawerHovered: (open: boolean) => void
-  aiMessage: string
-  setAIMessage: (msg: string) => void
-  aiIsLoading: boolean
-  aiSuggestions: AISuggestion[]
-  applyAISuggestion: (id: string) => void
-  handleAISendMessage: () => void
+  onApplyEnhanced?: (enhancedResume: ResumeData) => void;
 }
 
-export const AIPanel: React.FC<AIPanelProps> = ({
-  setAIDrawerHovered,
-  aiMessage,
-  setAIMessage,
-  aiIsLoading,
-  aiSuggestions,
-  applyAISuggestion,
-  handleAISendMessage,
-}) => {
+export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
   const [isHovered, setIsHovered] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
+  const [input, setInput] = useState('')
+  const { user } = useUser();
+  const userId = user?.id
+  const resumeData = useResumeStore(state => state.resumeData); 
+  const setResumeData = useResumeStore(state => state.setResumeData);
 
-  const handleMouseEnter = () => {
-    setIsHovered(true)
-    setAIDrawerHovered(true)
-  }
+  // Zustand AI store
+  const {
+    chatHistory,
+    enhancedResume,
+    isLoading,
+    error,
+    sendMessage,
+    enhanceResume,
+  } = useAIStore();
 
-  const handleMouseLeave = () => {
-    setIsHovered(false)
-    setAIDrawerHovered(false)
-  }
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const toggleMaximize = () => {
-    setIsMaximized(!isMaximized)
-  }
+  // Calculate dynamic width based on content
+  const getDynamicWidth = useMemo(() => {
+    const baseWidth = 42; // 42rem base width
+    const maxWidth = 80; // 80rem maximum width
+    
+    // Check if there are long AI responses
+    const hasLongResponses = chatHistory.some(msg => 
+      msg.role === 'assistant' && msg.content.length > 500
+    );
+    
+    // Check if there are code blocks or complex content
+    const hasComplexContent = chatHistory.some(msg => 
+      msg.role === 'assistant' && (
+        msg.content.includes('```') || 
+        msg.content.includes('`') ||
+        msg.content.length > 800
+      )
+    );
+    
+    if (hasComplexContent) {
+      return Math.min(maxWidth, baseWidth + 20); // Add 20rem for complex content
+    } else if (hasLongResponses) {
+      return Math.min(maxWidth, baseWidth + 10); // Add 10rem for long responses
+    }
+    
+    return baseWidth;
+  }, [chatHistory]);
+
+  // Auto-scroll to bottom on new message
+  useLayoutEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [chatHistory]);
+
+  const handleSend = async () => {
+    console.log("sending message to ai")
+    if (!input.trim()) return;
+    await sendMessage({ message: input, userId, resume: resumeData });
+    setInput('');
+  };
+
+  const handleEnhance = async () => {
+    await enhanceResume({ resume: resumeData, userId });
+  };
+
+  const handleApplyEnhanced = () => {
+    console.log('[AI Panel] Applying enhanced resume:', enhancedResume);
+    
+    if (onApplyEnhanced && enhancedResume) {
+      // Use the callback if provided
+      console.log('[AI Panel] Using callback to apply enhanced resume');
+      onApplyEnhanced(enhancedResume);
+    } else if (enhancedResume) {
+      // Fallback to direct setResumeData
+      console.log('[AI Panel] Using direct setResumeData to apply enhanced resume');
+      setResumeData(enhancedResume);
+    }
+    
+    // Show success message with details about what was enhanced
+    const enhancements = [];
+    if (enhancedResume?.summary) {
+      enhancements.push("Professional Summary");
+    }
+    if (enhancedResume?.skills && enhancedResume.skills.length > 0) {
+      enhancements.push("Skills List");
+    }
+    if (enhancedResume?.enhancedExperience) {
+      enhancements.push("Experience Descriptions");
+    }
+    
+    const enhancementText = enhancements.length > 0 
+      ? `Enhanced: ${enhancements.join(", ")}`
+      : "Enhanced resume applied!";
+    
+    console.log('[AI Panel] Enhancement details:', { enhancements, enhancementText });
+    toast.success(`${enhancementText} Review the changes in the editor.`);
+  };
 
   // Calculate panel height based on state
   const getPanelHeight = () => {
     if (isMaximized) return "85vh"
     if (isHovered) return "580px"
-    return "116px" // 20% of 580px
-  }
-
-  const getPanelTransform = () => {
-    if (isMaximized) return "translateY(0)"
-    if (isHovered) return "translateY(0)"
-    return "translateY(calc(100% - 116px))"
+    return "320px" // Increased min height
   }
 
   const getPanelTransformY = () => {
     if (isMaximized) return "0"
     if (isHovered) return "0"
-    return "calc(100% - 116px)"
+    return "calc(100% - 100px)"
   }
 
   return (
     <div
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className="fixed bottom-0 left-1/2 z-50"
       style={{
         width: "100%",
-        maxWidth: "42rem",
+        maxWidth: `${getDynamicWidth}rem`,
         height: getPanelHeight(),
         transform: `translate(-50%, ${getPanelTransformY()})`,
         transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -93,18 +150,12 @@ export const AIPanel: React.FC<AIPanelProps> = ({
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             <span className="text-sm font-semibold text-foreground">AI Assistant</span>
-            <Badge variant="secondary" className="text-xs">
-              {aiSuggestions.filter((s) => s.status === "pending").length} pending
-            </Badge>
+            {/* You can add more badges/info here */}
           </div>
-
           <div className="flex items-center gap-2">
-            {/* Drag handle */}
             <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
-
-            {/* Maximize button */}
             <Button
-              onClick={toggleMaximize}
+              onClick={() => setIsMaximized(!isMaximized)}
               variant="ghost"
               size="sm"
               className="w-8 h-8 p-0 hover:bg-muted/50 rounded-lg transition-all duration-200"
@@ -117,13 +168,11 @@ export const AIPanel: React.FC<AIPanelProps> = ({
             </Button>
           </div>
         </div>
-
-        {/* Scrollable content */}
         <ScrollArea className="h-[calc(100%-4rem)]">
           <div className="p-6 space-y-6">
             {/* AI Header CTA */}
             <div className="space-y-3">
-              <Button className="w-full h-12 text-base font-semibold rounded-xl bg-gradient-to-r from-primary to-primary/90 text-primary-foreground hover:from-primary/90 hover:to-primary/80 shadow-lg hover:shadow-xl transition-all duration-300 group">
+              <Button className="w-full h-12 text-base font-semibold rounded-xl bg-gradient-to-r from-primary to-primary/90 text-primary-foreground hover:from-primary/90 hover:to-primary/80 shadow-lg hover:shadow-xl transition-all duration-300 group" onClick={handleEnhance} disabled={isLoading}>
                 <Sparkles className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform duration-300" />
                 Improve Entire Resume with AI
               </Button>
@@ -132,136 +181,146 @@ export const AIPanel: React.FC<AIPanelProps> = ({
               </p>
             </div>
 
-            <Separator />
-
-            {/* AI Suggestions */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Bot className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">AI Suggestions</h3>
-              </div>
-
+            {/* Enhanced Resume Section */}
+            {enhancedResume && (
               <div className="space-y-3">
-                {aiSuggestions.map((suggestion) => (
-                  <Card
-                    key={suggestion.id}
-                    className="border-l-4 border-l-primary/60 shadow-sm hover:shadow-md transition-all duration-200 bg-card/50 backdrop-blur-sm hover:bg-card/80"
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="text-sm font-medium text-foreground leading-tight">{suggestion.title}</h4>
-                        <Badge
-                          variant={suggestion.status === "completed" ? "default" : "secondary"}
-                          className="ml-2 text-xs shrink-0"
-                        >
-                          {suggestion.status === "completed" ? (
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                          ) : (
-                            <Clock className="w-3 h-3 mr-1" />
-                          )}
-                          {suggestion.status}
-                        </Badge>
+                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                      Resume Enhanced Successfully!
+                    </p>
+                    <p className="text-xs text-green-600 dark:text-green-300">
+                      AI has improved your resume content
+                    </p>
+                    {/* Show what was enhanced */}
+                    <div className="mt-2 text-xs text-green-700 dark:text-green-300">
+                      <div className="flex flex-wrap gap-2">
+                        {enhancedResume.summary && (
+                          <span className="bg-green-200 dark:bg-green-800 px-2 py-1 rounded">Summary</span>
+                        )}
+                        {enhancedResume.skills && enhancedResume.skills.length > 0 && (
+                          <span className="bg-green-200 dark:bg-green-800 px-2 py-1 rounded">Skills ({enhancedResume.skills.length})</span>
+                        )}
+                        {enhancedResume.experience && enhancedResume.experience.length > 0 && (
+                          <span className="bg-green-200 dark:bg-green-800 px-2 py-1 rounded">Experience</span>
+                        )}
+                        {enhancedResume.enhancedExperience && (
+                          <span className="bg-green-200 dark:bg-green-800 px-2 py-1 rounded">Enhanced Experience</span>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{suggestion.description}</p>
-                      {suggestion.status === "pending" && (
-                        <Button
-                          onClick={() => applyAISuggestion(suggestion.id)}
-                          variant="outline"
-                          size="sm"
-                          className="w-full h-8 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all duration-200 rounded-lg"
-                        >
-                          {suggestion.action}
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleApplyEnhanced}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <ArrowRight className="w-4 h-4 mr-1" />
+                    Apply
+                  </Button>
+                </div>
               </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Target className="w-4 h-4 text-primary" />
-                Quick Actions
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-10 justify-start text-xs font-medium hover:bg-primary/10 hover:border-primary/50 transition-all duration-200 rounded-lg bg-transparent"
-                >
-                  <Target className="w-3 h-3 mr-2" />
-                  Improve Impact
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-10 justify-start text-xs font-medium hover:bg-primary/10 hover:border-primary/50 transition-all duration-200 rounded-lg bg-transparent"
-                >
-                  <Lightbulb className="w-3 h-3 mr-2" />
-                  Get Ideas
-                </Button>
-              </div>
-            </div>
+            )}
 
             <Separator />
-
             {/* Chat Interface */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                 <span className="text-sm font-semibold text-foreground">Chat with AI Assistant</span>
               </div>
-
               {/* Chat Messages */}
-              <div className="space-y-3 min-h-[120px] max-h-[200px] overflow-y-auto">
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Bot className="w-3 h-3 text-primary" />
-                  </div>
-                  <div className="bg-muted/50 px-3 py-2 rounded-lg rounded-tl-none text-sm text-muted-foreground max-w-[80%]">
-                    Hi! I&apos;m here to help you create an outstanding resume. What would you like to improve?
-                  </div>
-                </div>
-                {aiMessage && (
-                  <div className="flex justify-end">
-                    <div className="bg-primary text-primary-foreground px-3 py-2 rounded-lg rounded-tr-none text-sm max-w-[80%]">
-                      {aiMessage}
+              <div 
+                ref={scrollRef} 
+                className="space-y-3 min-h-[220px] max-h-[480px] overflow-y-auto pr-2"
+                style={{ 
+                  scrollBehavior: 'smooth',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word'
+                }}
+              >
+                {chatHistory.map((msg, idx) => (
+                  <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-3`}>
+                    {msg.role === 'assistant' && (
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-3 h-3 text-primary" />
+                      </div>
+                    )}
+                    <div 
+                      className={`px-3 py-2 rounded-lg text-sm max-w-[85%] break-words ${
+                        msg.role === 'user' 
+                          ? 'bg-primary text-primary-foreground rounded-tr-none' 
+                          : 'bg-muted/50 text-muted-foreground rounded-tl-none'
+                      }`}
+                      style={{
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                        whiteSpace: 'pre-wrap'
+                      }}
+                    >
+                      {msg.role === 'assistant' ? (
+                        <ReactMarkdown 
+                          components={{
+                            code: ({ className, children, ...props }) => (
+                              <code className={`bg-muted px-1 py-0.5 rounded text-xs ${className || ''}`} {...props}>
+                                {children}
+                              </code>
+                            ),
+                            pre: ({ children }) => (
+                              <pre className="bg-muted p-2 rounded text-xs overflow-x-auto my-2">
+                                {children}
+                              </pre>
+                            ),
+                            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                            li: ({ children }) => <li className="text-sm">{children}</li>,
+                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                            em: ({ children }) => <em className="italic">{children}</em>,
+                          }}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
+                      ) : (
+                        <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {msg.content}
+                        </span>
+                      )}
                     </div>
                   </div>
-                )}
+                ))}
               </div>
-
               {/* Chat Input */}
               <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  handleAISendMessage()
+                onSubmit={e => {
+                  e.preventDefault();
+                  handleSend();
                 }}
                 className="flex items-center gap-3"
               >
                 <div className="flex-1 relative">
                   <Input
-                    value={aiMessage}
-                    onChange={(e) => setAIMessage(e.target.value)}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
                     className="h-10 text-sm border-border/50 focus:border-primary/50 bg-background/50 backdrop-blur-sm rounded-lg"
                     placeholder="Ask me anything about your resume..."
                   />
                 </div>
                 <Button
                   type="submit"
-                  disabled={aiIsLoading || !aiMessage.trim()}
+                  disabled={isLoading || !input.trim()}
                   size="sm"
-                  className="h-10 px-4 bg-primary hover:bg-primary/90 shadow-sm hover:shadow-md transition-all duration-200 rounded-lg"
+                  className="h-10 px-4 bg-primary hover:bg-primary/90 shadow-sm hover:shadow-md transition-all duration-200 rounded-lg shrink-0"
                 >
-                  {aiIsLoading ? (
+                  {isLoading ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <Send className="w-4 h-4" />
                   )}
                 </Button>
               </form>
+              {error && <div className="text-red-500 text-xs mt-2 break-words">{error}</div>}
             </div>
           </div>
         </ScrollArea>

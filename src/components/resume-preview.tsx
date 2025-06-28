@@ -8,8 +8,8 @@ const A4_WIDTH = 794;
 const A4_HEIGHT = 1123;
 const PAGE_MARGIN = 40;
 const HEADER_HEIGHT = 60;
-const FOOTER_HEIGHT = 8;
-const CONTENT_HEIGHT = A4_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT;
+const FOOTER_HEIGHT = 40;
+const CONTENT_HEIGHT = A4_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - (PAGE_MARGIN * 2);
 
 export function ResumePreview({ data, template }: { data: ResumeData; template: string }) {
   const [pages, setPages] = useState<React.ReactNode[][]>([]);
@@ -57,8 +57,12 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
       sectionRefs.current.forEach((el, idx) => {
         if (!el) return;
         const sectionHeight = el.getBoundingClientRect().height;
-        // If section fits, add to current page
-        if (currentHeight + sectionHeight <= CONTENT_HEIGHT || currentHeight === 0) {
+        // More conservative pagination: leave some buffer space
+        const bufferSpace = 20; // 20px buffer
+        const availableHeight = CONTENT_HEIGHT - bufferSpace;
+        
+        // If section fits with buffer space, add to current page
+        if (currentHeight + sectionHeight <= availableHeight || currentHeight === 0) {
           currentPage.push(sectionNodes[idx]);
           currentHeight += sectionHeight;
         } else {

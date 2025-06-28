@@ -28,7 +28,7 @@ function renderValue(value: unknown): React.ReactNode {
     );
   }
   if (typeof value === 'object' && value !== null) {
-    // If the object only has 'id', do not render anything
+    // Defensive: If the object only has 'id' or is empty, do not render anything
     const entries = Object.entries(value).filter(([key]) => key !== 'id');
     if (entries.length === 0) return null;
     return (

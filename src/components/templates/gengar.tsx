@@ -28,7 +28,7 @@ function renderValue(value: unknown): React.ReactNode {
     );
   }
   if (typeof value === 'object' && value !== null) {
-    // If the object only has 'id', do not render anything
+    // Defensive: If the object only has 'id' or is empty, do not render anything
     const entries = Object.entries(value).filter(([key]) => key !== 'id');
     if (entries.length === 0) return null;
     return (
@@ -57,7 +57,7 @@ export const Gengar = ({ data, sectionsToRender }: TemplateProps) => {
   function renderSectionByKey(key: string) {
     if (key === 'personalInfo') {
       return (
-        <header key={key} className="break-inside-avoid">
+        <header key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h1 className="text-5xl font-bold mb-3 text-white">{data.personalInfo.name}</h1>
           <div className="text-gray-300 space-y-1" style={{ lineHeight: spacing.lineHeight }}>
             <p>{data.personalInfo.email}</p>
@@ -69,7 +69,7 @@ export const Gengar = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'summary' && data.summary) {
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-purple-400 border-b-2 border-purple-600 pb-2">Summary</h2>
           <p className="text-gray-300 leading-relaxed" style={{ lineHeight: spacing.lineHeight }}>{data.summary}</p>
         </section>
@@ -77,11 +77,11 @@ export const Gengar = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'experience' && data.experience?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-purple-400 border-b-2 border-purple-600 pb-2">Experience</h2>
           <div className="space-y-6">
             {data.experience.map((exp) => (
-              <div key={exp.id} className="border-l-4 border-purple-500 pl-4 bg-gray-800 p-4 rounded-r-lg">
+              <div key={exp.id} className="border-l-4 border-purple-500 pl-4 bg-gray-800 p-4 rounded-r-lg" style={{ pageBreakInside: 'avoid' }}>
                 <h3 className="text-xl font-bold text-white">{exp.position}</h3>
                 <div className="text-purple-300 mb-2">
                   <span className="font-semibold">{exp.company}</span>
@@ -98,11 +98,11 @@ export const Gengar = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'education' && data.education?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-purple-400 border-b-2 border-purple-600 pb-2">Education</h2>
           <div className="space-y-4">
             {data.education.map((edu) => (
-              <div key={edu.id} className="border-l-4 border-purple-500 pl-4 bg-gray-800 p-4 rounded-r-lg">
+              <div key={edu.id} className="border-l-4 border-purple-500 pl-4 bg-gray-800 p-4 rounded-r-lg" style={{ pageBreakInside: 'avoid' }}>
                 <h3 className="text-xl font-bold text-white">{edu.degree}</h3>
                 <div className="text-purple-300">
                   <span className="font-semibold">{edu.school}</span>
@@ -118,7 +118,7 @@ export const Gengar = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'skills' && data.skills?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-purple-400 border-b-2 border-purple-600 pb-2">Skills</h2>
           <div className="flex flex-wrap gap-3">
             {data.skills.map((skill, index) => (
@@ -135,11 +135,11 @@ export const Gengar = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'projects' && data.projects?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-purple-400 border-b-2 border-purple-600 pb-2">Projects</h2>
           <div className="space-y-6">
             {data.projects.map((project) => (
-              <div key={project.id} className="border-l-4 border-purple-500 pl-4 bg-gray-800 p-4 rounded-r-lg">
+              <div key={project.id} className="border-l-4 border-purple-500 pl-4 bg-gray-800 p-4 rounded-r-lg" style={{ pageBreakInside: 'avoid' }}>
                 <h3 className="text-xl font-bold text-white">{project.name}</h3>
                 {(project.liveUrl || project.githubUrl) && (
                   <div className="text-sm text-purple-300 mb-2">
@@ -179,7 +179,7 @@ export const Gengar = ({ data, sectionsToRender }: TemplateProps) => {
       const section = data.customSections?.find(cs => cs.id === id);
       if (!section) return null;
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-purple-400 border-b-2 border-purple-600 pb-2">{section.name}</h2>
           {renderCustomSectionValue(section)}
         </section>
@@ -191,7 +191,11 @@ export const Gengar = ({ data, sectionsToRender }: TemplateProps) => {
   const sectionsToRenderList = sectionsToRender || data.sectionOrder || [];
 
   return (
-    <div className="space-y-6 break-words mr-10">
+    <div className="space-y-6 text-balance mr-12" style={{ 
+      pageBreakInside: 'auto',
+      orphans: 2,
+      widows: 2
+    }}>
       {sectionsToRenderList.map(renderSectionByKey)}
     </div>
   );

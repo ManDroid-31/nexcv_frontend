@@ -54,7 +54,7 @@ export const Chikorita = ({ data, sectionsToRender }: TemplateProps) => {
   function renderSectionByKey(key: string) {
     if (key === 'personalInfo') {
       return (
-        <header key={key} className="break-inside-avoid mb-6">
+        <header key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h1 className="text-4xl font-bold mb-3 text-gray-900">{data.personalInfo.name}</h1>
           <div className="text-gray-600 space-y-1" style={{ lineHeight: spacing.lineHeight }}>
             <p>{data.personalInfo.email}</p>
@@ -66,7 +66,7 @@ export const Chikorita = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'summary' && data.summary) {
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-green-700 border-b-2 border-green-200 pb-2">Summary</h2>
           <p className="text-gray-700 leading-relaxed" style={{ lineHeight: spacing.lineHeight }}>{data.summary}</p>
         </section>
@@ -74,11 +74,11 @@ export const Chikorita = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'experience' && data.experience?.length) {
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-green-700 border-b-2 border-green-200 pb-2">Experience</h2>
           <div className="space-y-6">
             {data.experience.map((exp) => (
-              <div key={exp.id} className="border-l-4 border-green-400 pl-4">
+              <div key={exp.id} className="border-l-4 border-green-400 pl-4" style={{ pageBreakInside: 'avoid' }}>
                 <h3 className="text-xl font-bold text-gray-900">{exp.position}</h3>
                 <div className="text-green-600 mb-2">
                   <span className="font-semibold">{exp.company}</span>
@@ -95,11 +95,11 @@ export const Chikorita = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'education' && data.education?.length) {
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-green-700 border-b-2 border-green-200 pb-2">Education</h2>
           <div className="space-y-4">
             {data.education.map((edu) => (
-              <div key={edu.id} className="border-l-4 border-green-400 pl-4">
+              <div key={edu.id} className="border-l-4 border-green-400 pl-4" style={{ pageBreakInside: 'avoid' }}>
                 <h3 className="text-xl font-bold text-gray-900">{edu.degree}</h3>
                 <div className="text-green-600">
                   <span className="font-semibold">{edu.school}</span>
@@ -115,7 +115,7 @@ export const Chikorita = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'skills' && data.skills?.length) {
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-green-700 border-b-2 border-green-200 pb-2">Skills</h2>
           <div className="grid grid-cols-2 gap-4">
             {data.skills.map((skill, index) => (
@@ -130,11 +130,11 @@ export const Chikorita = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'projects' && data.projects?.length) {
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-green-700 border-b-2 border-green-200 pb-2">Projects</h2>
           <div className="space-y-6">
             {data.projects.map((project) => (
-              <div key={project.id} className="border-l-4 border-green-400 pl-4">
+              <div key={project.id} className="border-l-4 border-green-400 pl-4" style={{ pageBreakInside: 'avoid' }}>
                 <h3 className="text-xl font-bold text-gray-900">{project.name}</h3>
                 {(project.liveUrl || project.githubUrl) && (
                   <div className="text-sm text-green-600 mb-2">
@@ -174,7 +174,7 @@ export const Chikorita = ({ data, sectionsToRender }: TemplateProps) => {
       const section = data.customSections?.find(cs => cs.id === id);
       if (!section) return null;
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-bold mb-4 text-green-700 border-b-2 border-green-200 pb-2">{section.name}</h2>
           {renderCustomSectionValue(section)}
         </section>
@@ -186,7 +186,11 @@ export const Chikorita = ({ data, sectionsToRender }: TemplateProps) => {
   const sectionsToRenderList = sectionsToRender || data.sectionOrder || [];
 
   return (
-    <div className="space-y-6 break-words mr-10">
+    <div className="space-y-6 text-balance mr-12" style={{ 
+      pageBreakInside: 'auto',
+      orphans: 2,
+      widows: 2
+    }}>
       {sectionsToRenderList.map(renderSectionByKey)}
     </div>
   );

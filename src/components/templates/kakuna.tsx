@@ -28,7 +28,7 @@ function renderValue(value: unknown): React.ReactNode {
     );
   }
   if (typeof value === 'object' && value !== null) {
-    // If the object only has 'id', do not render anything
+    // Defensive: If the object only has 'id' or is empty, do not render anything
     const entries = Object.entries(value).filter(([key]) => key !== 'id');
     if (entries.length === 0) return null;
     return (
@@ -57,7 +57,7 @@ export const Kakuna = ({ data, sectionsToRender }: TemplateProps) => {
   function renderSectionByKey(key: string) {
     if (key === 'personalInfo') {
       return (
-        <header key={key} className="break-inside-avoid">
+        <header key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h1 className="text-3xl font-bold mb-2 text-gray-900">{data.personalInfo.name}</h1>
           <div className="text-gray-600 space-y-1 text-sm" style={{ lineHeight: spacing.lineHeight }}>
             <p>{data.personalInfo.email}</p>
@@ -69,7 +69,7 @@ export const Kakuna = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'summary' && data.summary) {
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-lg font-semibold mb-3 text-gray-900 uppercase tracking-wide">Summary</h2>
           <p className="text-gray-700 leading-relaxed" style={{ lineHeight: spacing.lineHeight }}>{data.summary}</p>
         </section>
@@ -77,11 +77,11 @@ export const Kakuna = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'experience' && data.experience?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-lg font-semibold mb-4 text-gray-900 uppercase tracking-wide">Experience</h2>
           <div className="space-y-4">
             {data.experience.map((exp) => (
-              <div key={exp.id}>
+              <div key={exp.id} style={{ pageBreakInside: 'avoid' }}>
                 <div className="flex justify-between items-start mb-1">
                   <h3 className="text-lg font-semibold text-gray-900">{exp.position}</h3>
                   {exp.startDate && (
@@ -98,11 +98,11 @@ export const Kakuna = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'education' && data.education?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-lg font-semibold mb-4 text-gray-900 uppercase tracking-wide">Education</h2>
           <div className="space-y-4">
             {data.education.map((edu) => (
-              <div key={edu.id}>
+              <div key={edu.id} style={{ pageBreakInside: 'avoid' }}>
                 <div className="flex justify-between items-start mb-1">
                   <h3 className="text-lg font-semibold text-gray-900">{edu.degree}</h3>
                   {edu.startDate && (
@@ -118,7 +118,7 @@ export const Kakuna = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'skills' && data.skills?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-lg font-semibold mb-4 text-gray-900 uppercase tracking-wide">Skills</h2>
           <div className="flex flex-wrap gap-2">
             {data.skills.map((skill, index) => (
@@ -135,11 +135,11 @@ export const Kakuna = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'projects' && data.projects?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-lg font-semibold mb-4 text-gray-900 uppercase tracking-wide">Projects</h2>
           <div className="space-y-4">
             {data.projects.map((project) => (
-              <div key={project.id}>
+              <div key={project.id} style={{ pageBreakInside: 'avoid' }}>
                 <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
                 {(project.liveUrl || project.githubUrl) && (
                   <div className="text-sm text-gray-600 mb-2">
@@ -179,7 +179,7 @@ export const Kakuna = ({ data, sectionsToRender }: TemplateProps) => {
       const section = data.customSections?.find(cs => cs.id === id);
       if (!section) return null;
       return (
-        <section key={key} className="break-inside-avoid">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-lg font-semibold mb-4 text-gray-900 uppercase tracking-wide">{section.name}</h2>
           {renderCustomSectionValue(section)}
         </section>
@@ -191,7 +191,11 @@ export const Kakuna = ({ data, sectionsToRender }: TemplateProps) => {
   const sectionsToRenderList = sectionsToRender || data.sectionOrder || [];
 
   return (
-    <div className="space-y-6 break-words mr-10">
+    <div className="space-y-6 text-balance mr-12" style={{ 
+      pageBreakInside: 'auto',
+      orphans: 2,
+      widows: 2
+    }}>
       {sectionsToRenderList.map(renderSectionByKey)}
     </div>
   );

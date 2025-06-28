@@ -28,7 +28,7 @@ function renderValue(value: unknown): React.ReactNode {
     );
   }
   if (typeof value === 'object' && value !== null) {
-    // If the object only has 'id', do not render anything
+    // Defensive: If the object only has 'id' or is empty, do not render anything
     const entries = Object.entries(value).filter(([key]) => key !== 'id');
     if (entries.length === 0) return null;
     return (
@@ -60,7 +60,7 @@ export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
   function renderSectionByKey(key: string) {
     if (key === 'personalInfo') {
       return (
-        <header key={key} className="break-inside-avoid mb-6">
+        <header key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h1 className="text-4xl font-bold mb-2">{data.personalInfo.name}</h1>
           <div className="text-gray-600" style={{ lineHeight: spacing.lineHeight }}>
             <p>{data.personalInfo.email}</p>
@@ -72,7 +72,7 @@ export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'summary' && data.summary) {
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-semibold border-b pb-2 mb-2">Summary</h2>
           <p style={{ lineHeight: spacing.lineHeight }}>{data.summary}</p>
         </section>
@@ -80,10 +80,10 @@ export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'experience' && data.experience?.length) {
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-semibold border-b pb-2 mb-2">Experience</h2>
           {data.experience.map((exp) => (
-            <div key={exp.id} className="mb-4">
+            <div key={exp.id} className="mb-4" style={{ pageBreakInside: 'avoid' }}>
               <h3 className="text-xl font-medium">{exp.position}</h3>
               <div className="text-gray-600 text-sm">
                 <span>{exp.company}</span>
@@ -97,10 +97,10 @@ export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'education' && data.education?.length) {
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-semibold border-b pb-2 mb-2">Education</h2>
           {data.education.map((edu) => (
-            <div key={edu.id} className="mb-4">
+            <div key={edu.id} className="mb-4" style={{ pageBreakInside: 'avoid' }}>
               <h3 className="text-xl font-medium">{edu.degree}</h3>
               <div className="text-gray-600 text-sm">
                 <span>{edu.school}</span>
@@ -113,7 +113,7 @@ export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'skills' && data.skills?.length) {
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-semibold border-b pb-2 mb-2">Skills</h2>
           <div className="flex flex-wrap gap-2">
             {data.skills.map((skill, index) => (
@@ -131,10 +131,10 @@ export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'projects' && data.projects?.length) {
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-semibold border-b pb-2 mb-2">Projects</h2>
           {data.projects.map((project) => (
-            <div key={project.id} className="mb-4">
+            <div key={project.id} className="mb-4" style={{ pageBreakInside: 'avoid' }}>
               <h3 className="text-xl font-medium">{project.name}</h3>
               <p style={{ lineHeight: spacing.lineHeight }}>{project.description}</p>
               {project.technologies && (
@@ -156,7 +156,7 @@ export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
       const section = data.customSections?.find(cs => cs.id === id);
       if (!section) return null;
       return (
-        <section key={key} className="break-inside-avoid mb-6">
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
           <h2 className="text-2xl font-semibold border-b pb-2 mb-2">{section.name}</h2>
           {renderCustomSectionValue(section)}
         </section>
@@ -168,7 +168,11 @@ export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
   const sectionsToRenderList = sectionsToRender || data.sectionOrder || [];
 
   return (
-    <div className="space-y-6 text-balance mr-12">
+    <div className="space-y-6 text-balance mr-12" style={{ 
+      pageBreakInside: 'auto',
+      orphans: 2,
+      widows: 2
+    }}>
       {sectionsToRenderList.map(renderSectionByKey)}
     </div>
   );
