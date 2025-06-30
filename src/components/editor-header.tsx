@@ -14,6 +14,7 @@ interface EditorHeaderProps {
   onSaveClick: () => void
   onExportClick: () => void
   saving?: boolean
+  onPublicChange: (isPublic: boolean) => void
 }
 
 export function EditorHeader({
@@ -24,7 +25,8 @@ export function EditorHeader({
   onAIClick,
   onSaveClick,
   onExportClick,
-  saving = false
+  saving = false,
+  onPublicChange
 }: EditorHeaderProps) {
   return (
     <div className="border-b bg-background">
@@ -44,7 +46,7 @@ export function EditorHeader({
               type="checkbox"
               id="public"
               checked={isPublic}
-              onChange={() => onTitleChange(title)}
+              onChange={e => onPublicChange(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300"
             />
             <label htmlFor="public" className="text-sm font-medium">Public</label>

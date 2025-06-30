@@ -390,7 +390,14 @@ export default function ResumeEditor({ params }: PageProps) {
     if (!resumeData || !userId) return;
     setSaving(true);
     try {
-      await saveResume(resumeData, userId, resumeId);
+      // Ensure both fields are set
+      const isPublic = resumeData.visibility === "public";
+      const saveData = {
+        ...resumeData,
+        isPublic,
+        visibility: isPublic ? "public" : "private"
+      };
+      await saveResume(saveData, userId, resumeId);
       // Refetch the latest resume from the backend
       const updated = await getResumeById(resumeId, userId);
       setResumeData(updated);
@@ -1466,8 +1473,14 @@ export default function ResumeEditor({ params }: PageProps) {
       <div className="min-h-screen bg-background">
         <EditorHeader
           title={resumeData.title}
-          isPublic={resumeData.isPublic}
+          isPublic={resumeData.visibility === "public"}
           onTitleChange={(title) => updateResumeData({ title })}
+          onPublicChange={isPublic => {
+            updateResumeData({
+              isPublic,
+              visibility: isPublic ? "public" : "private"
+            });
+          }}
           onTemplateClick={() => setIsTemplateModalOpen(true)}
           onSaveClick={handleSave}
           onExportClick={() => setIsExportModalOpen(true)}

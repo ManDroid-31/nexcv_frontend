@@ -109,4 +109,5 @@ export interface ResumeData {
   updatedAt?: string;
   templateInfo?: Record<string, unknown> | null;
   availableTemplates?: Record<string, unknown> | null;
+  visibility?: string;
 } 
