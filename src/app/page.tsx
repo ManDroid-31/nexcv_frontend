@@ -32,6 +32,8 @@ import Link from "next/link"
 import { AuthProvider } from "@/components/mock-auth"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { SignInButton, SignUpButton, UserButton, SignedIn, SignedOut } from '@clerk/nextjs'
+import { useCredits } from '@/hooks/use-credits'
+import { useState } from 'react'
 
 export default function LandingPage() {
   const scrollToSection = (sectionId: string) => {
@@ -40,6 +42,9 @@ export default function LandingPage() {
       element.scrollIntoView({ behavior: 'smooth' })
     }
   }
+
+  const { pricing, loading: pricingLoading, error: pricingError, buyCredits } = useCredits()
+  const [buying, setBuying] = useState<number | null>(null)
 
   return (
     <AuthProvider>
@@ -499,6 +504,45 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Buy Credits Section */}
+        <section className="max-w-3xl mx-auto mt-12 mb-16 p-8 bg-white/80 dark:bg-muted/80 rounded-xl shadow-lg border border-border">
+          <h2 className="text-2xl font-bold mb-4 text-primary">Buy Credits</h2>
+          {pricingLoading ? (
+            <div>Loading credit packages...</div>
+          ) : pricingError ? (
+            <div className="text-red-500">{pricingError}</div>
+          ) : pricing && pricing.packages ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {pricing.packages.map((pkg: { credits: number; price: number }) => (
+                <div key={pkg.credits} className="border rounded-lg p-6 bg-background flex flex-col items-center">
+                  <div className="text-3xl font-bold text-primary mb-2">{pkg.credits} credits</div>
+                  <div className="text-lg font-semibold mb-2">${(pkg.price / 100).toFixed(2)}</div>
+                  <div className="text-sm text-muted-foreground mb-4">{(pricing.pricePerCredit / 100).toFixed(2)} per credit</div>
+                  <button
+                    className="mt-2 px-6 py-2 rounded bg-primary text-white font-semibold hover:bg-primary/90 transition disabled:opacity-60"
+                    disabled={buying === pkg.credits}
+                    onClick={async () => {
+                      setBuying(pkg.credits);
+                      try {
+                        const res = await buyCredits(pkg.credits);
+                        if (res.url) {
+                          window.location.href = res.url;
+                        }
+                      } catch {
+                        alert('Failed to start checkout.');
+                      } finally {
+                        setBuying(null);
+                      }
+                    }}
+                  >
+                    {buying === pkg.credits ? 'Redirecting...' : `Buy ${pkg.credits} credits`}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         {/* Footer */}
