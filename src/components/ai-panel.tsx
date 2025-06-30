@@ -44,27 +44,33 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
     const baseWidth = 42; // 42rem base width
     const maxWidth = 80; // 80rem maximum width
     
+    // Safely handle undefined chatHistory
+    if (!chatHistory || !Array.isArray(chatHistory)) {
+      return `${baseWidth}rem`;
+    }
+    
     // Check if there are long AI responses
     const hasLongResponses = chatHistory.some(msg => 
-      msg.role === 'assistant' && msg.content.length > 500
+      msg?.role === 'assistant' && msg?.content && msg.content.length > 500
     );
     
     // Check if there are code blocks or complex content
     const hasComplexContent = chatHistory.some(msg => 
-      msg.role === 'assistant' && (
+      msg?.role === 'assistant' && msg?.content && (
         msg.content.includes('```') || 
         msg.content.includes('`') ||
         msg.content.length > 800
       )
     );
     
+    let width = baseWidth;
     if (hasComplexContent) {
-      return Math.min(maxWidth, baseWidth + 20); // Add 20rem for complex content
+      width = Math.min(maxWidth, baseWidth + 20); // Add 20rem for complex content
     } else if (hasLongResponses) {
-      return Math.min(maxWidth, baseWidth + 10); // Add 10rem for long responses
+      width = Math.min(maxWidth, baseWidth + 10); // Add 10rem for long responses
     }
     
-    return baseWidth;
+    return `${width}rem`;
   }, [chatHistory]);
 
   // Auto-scroll to bottom on new message
@@ -76,23 +82,32 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
 
   const handleSend = async () => {
     console.log("sending message to ai")
-    if (!input.trim()) return;
+    if (!input.trim() || !resumeData) return;
     await sendMessage({ message: input, userId, resume: resumeData });
     setInput('');
   };
 
   const handleEnhance = async () => {
+    if (!resumeData) {
+      toast.error('No resume data available to enhance');
+      return;
+    }
     await enhanceResume({ resume: resumeData, userId });
   };
 
   const handleApplyEnhanced = () => {
     console.log('[AI Panel] Applying enhanced resume:', enhancedResume);
     
-    if (onApplyEnhanced && enhancedResume) {
+    if (!enhancedResume) {
+      console.log('[AI Panel] No enhanced resume data available');
+      return;
+    }
+    
+    if (onApplyEnhanced) {
       // Use the callback if provided
       console.log('[AI Panel] Using callback to apply enhanced resume');
       onApplyEnhanced(enhancedResume);
-    } else if (enhancedResume) {
+    } else if (setResumeData) {
       // Fallback to direct setResumeData
       console.log('[AI Panel] Using direct setResumeData to apply enhanced resume');
       setResumeData(enhancedResume);
@@ -100,13 +115,13 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
     
     // Show success message with details about what was enhanced
     const enhancements = [];
-    if (enhancedResume?.summary) {
+    if (enhancedResume.summary) {
       enhancements.push("Professional Summary");
     }
-    if (enhancedResume?.skills && enhancedResume.skills.length > 0) {
+    if (enhancedResume.skills && enhancedResume.skills.length > 0) {
       enhancements.push("Skills List");
     }
-    if (enhancedResume?.enhancedExperience) {
+    if (enhancedResume.experience && enhancedResume.experience.length > 0) {
       enhancements.push("Experience Descriptions");
     }
     
@@ -138,7 +153,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
       className="fixed bottom-0 left-1/2 z-50"
       style={{
         width: "100%",
-        maxWidth: `${getDynamicWidth}rem`,
+        maxWidth: getDynamicWidth,
         height: getPanelHeight(),
         transform: `translate(-50%, ${getPanelTransformY()})`,
         transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -204,9 +219,6 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
                         )}
                         {enhancedResume.experience && enhancedResume.experience.length > 0 && (
                           <span className="bg-green-200 dark:bg-green-800 px-2 py-1 rounded">Experience</span>
-                        )}
-                        {enhancedResume.enhancedExperience && (
-                          <span className="bg-green-200 dark:bg-green-800 px-2 py-1 rounded">Enhanced Experience</span>
                         )}
                       </div>
                     </div>

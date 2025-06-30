@@ -1,4 +1,4 @@
-// AI API utility for backend at http://localhost:5000/api/ai/
+// AI API utility for backend
 "use client"
 
 import { ResumeData } from '@/types/resume';
@@ -20,17 +20,42 @@ export async function chatWithAI({ message, conversationId, resume, userId }: {
     ...getAuthHeader(userId)
   };
   console.log('[AI API] POST /chat', { userId: userIdLog, conversationId });
-  const res = await fetch('http://localhost:5000/api/ai/chat', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ message, conversationId, resume, userId })
-  });
-  if (!res.ok) {
-    const errText = await res.text();
-    console.error('[AI API] /chat error:', errText);
-    throw new Error(errText);
+  
+  try {
+    const backendUrl = process.env.AI_BACKEND_URL || 'http://localhost:5000';
+    console.log('[AI API] Using backend URL:', backendUrl);
+    
+    const res = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message, conversationId, resume, userId })
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('[AI API] /chat error:', errText);
+      
+      // Parse error details if possible
+      try {
+        const errorData = JSON.parse(errText);
+        if (errorData.error === 'AI Backend error: 500 Internal Server Error' && 
+            errorData.details?.includes('AI service unavailable')) {
+          throw new Error('AI service is not running. Please ensure the AI backend is running at ' + backendUrl);
+        }
+        throw new Error(errorData.error || errText);
+      } catch (parseError) {
+        throw new Error(errText);
+      }
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('[AI API] Chat error:', error);
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error('Could not connect to AI service. Please check your connection and try again.');
+    }
+    throw error;
   }
-  return res.json();
 }
 
 export async function enhanceResumeWithAI({ resume, userId }: {
@@ -45,7 +70,7 @@ export async function enhanceResumeWithAI({ resume, userId }: {
   console.log('[AI API] POST /enhance-resume', { userId: userIdLog });
   console.log('[AI API] Original resume data:', resume);
   
-  const res = await fetch('http://localhost:5000/api/ai/enhance-resume', {
+  const res = await fetch('/api/ai/enhance-resume', {
     method: 'POST',
     headers,
     body: JSON.stringify({ resume, userId })
@@ -66,7 +91,6 @@ export async function enhanceResumeWithAI({ resume, userId }: {
       console.log('[AI API] Parsed enhanceResume JSON:', enhancedData);
       
       // The backend returns the enhanced data nested under 'data' property
-      // We need to merge the enhanced data with the original resume structure
       let finalEnhancedData;
       
       if (enhancedData.data) {
@@ -123,7 +147,7 @@ export async function getAIConversation({ conversationId, userId }: {
 }) {
   const headers = getAuthHeader(userId);
   console.log('[AI API] GET /conversation', { userId: headers['x-clerk-user-id'], conversationId });
-  const res = await fetch(`http://localhost:5000/api/ai/conversation/${conversationId}`, {
+  const res = await fetch(`/api/ai/conversation/${conversationId}`, {
     headers
   });
   if (!res.ok) {
@@ -137,7 +161,7 @@ export async function getAIConversation({ conversationId, userId }: {
 export async function getAICacheStats(userId?: string) {
   const headers = getAuthHeader(userId);
   console.log('[AI API] GET /cache/stats', { userId: headers['x-clerk-user-id'] });
-  const res = await fetch('http://localhost:5000/api/ai/cache/stats', {
+  const res = await fetch('/api/ai/cache/stats', {
     headers
   });
   if (!res.ok) {
@@ -150,7 +174,7 @@ export async function getAICacheStats(userId?: string) {
 
 export async function testAINormalization({ prompt }: { prompt: string }) {
   console.log('[AI API] POST /test-normalization');
-  const res = await fetch('http://localhost:5000/api/ai/test-normalization', {
+  const res = await fetch('/api/ai/test-normalization', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt })

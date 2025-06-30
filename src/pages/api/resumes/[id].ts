@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getAuth } from '@clerk/nextjs/server';
-import { ObjectId } from 'mongodb';
 
 type ResponseData = Record<string, unknown> | { error: string };
 
@@ -128,10 +127,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
     }
 
-    let { id } = req.query;
+    const { id } = req.query;
     if (!id || id === 'all') {
       // Fetch all resumes
-      const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:5000/api/resumes'}`;
+      const backendUrl = `${process.env.BACKEND_URL}/api/resumes`;
       if (req.method === 'GET') {
         const backendRes = await fetch(backendUrl, {
           method: 'GET',
@@ -152,13 +151,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
       return res.status(405).json({ error: 'Method not allowed' });
     }
+
+    // Validate resume ID format
     if (!isValidObjectId(id)) {
-      id = new ObjectId().toHexString();
+      return res.status(400).json({ error: 'Invalid resume ID format' });
     }
-    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:5000/api/resumes/'}${id}`;
-    
-    
-      // For GET requests (get single resume)
+
+    // Individual resume operations
+    const backendUrl = `${process.env.BACKEND_URL}/api/resumes/${id}`;
+
     if (req.method === 'GET') {
       const backendRes = await fetch(backendUrl, {
         method: 'GET',

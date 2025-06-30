@@ -68,7 +68,7 @@ const DraggableSection = dynamic(() => import('./DraggableSection').then(mod => 
 type EditMode = "form" | "json" | "paged-form"
 
 type PageProps = {
-  params: { id: string }
+  params: Promise<{ id: string }>
 };
 
 // Define the sections and their order
@@ -188,7 +188,8 @@ function restoreIdsFromOriginal(original: ResumeData, edited: ResumeData): Resum
 
 // main function and last 
 export default function ResumeEditor({ params }: PageProps) {
-  const resumeId = params.id;
+  const resolvedParams = React.use(params);
+  const resumeId = resolvedParams.id;
   const [editMode, setEditMode] = useState<EditMode>("form")
 
   //UI componeents state handlers

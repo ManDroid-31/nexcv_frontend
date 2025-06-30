@@ -37,14 +37,33 @@ export const useAIStore = create<AIState>((set, get) => ({
     set({ isLoading: true, error: undefined });
     try {
       const response = await chatWithAI({ message, resume, userId });
-      set({
-        chatHistory: [...get().chatHistory, { role: 'user', content: message }, { role: 'assistant', content: response.message }],
+      console.log('[AI Store] Chat response:', response);
+      
+      // Add messages to chat history
+      set(state => ({
+        chatHistory: [
+          ...state.chatHistory,
+          { role: 'user', content: message },
+          { role: 'assistant', content: response.message }
+        ],
         conversationId: response.conversationId,
         isLoading: false,
-      });
+      }));
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'AI chat failed';
-      set({ error: errorMessage, isLoading: false });
+      console.error('[AI Store] Error:', errorMessage);
+      
+      // Still add the user message even if AI response fails
+      set(state => ({
+        chatHistory: [
+          ...state.chatHistory,
+          { role: 'user', content: message }
+        ],
+        error: errorMessage,
+        isLoading: false
+      }));
+      
+      toast.error('Failed to get AI response');
     }
   },
 

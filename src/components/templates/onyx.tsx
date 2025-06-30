@@ -5,9 +5,19 @@ import type { CustomSection } from "@/types/resume";
 function renderValue(value: unknown): React.ReactNode {
   if (value == null) return null;
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return value.toString();
+    return <p>{value.toString()}</p>;
   }
   if (Array.isArray(value)) {
+    // Array of primitives
+    if (value.length > 0 && typeof value[0] === 'string') {
+      return (
+        <div className="space-y-1">
+          {value.map((item, idx) => (
+            <p key={idx}>{item}</p>
+          ))}
+        </div>
+      );
+    }
     // Key-value array
     if (value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'key' in value[0] && 'value' in value[0]) {
       return (
@@ -18,26 +28,29 @@ function renderValue(value: unknown): React.ReactNode {
         </ul>
       );
     }
-    // Array of primitives or objects
+    // Array of objects
     return (
-      <ul className="space-y-1">
+      <div className="space-y-2">
         {value.map((item, idx) => (
-          <li key={idx}>{renderValue(item)}</li>
+          <div key={idx}>{renderValue(item)}</div>
         ))}
-      </ul>
+      </div>
     );
   }
   if (typeof value === 'object' && value !== null) {
-    // Defensive: If the object only has 'id' or is empty, do not render anything
     const entries = Object.entries(value).filter(([key]) => key !== 'id');
+    if (entries.length === 1) {
+      // Only one field, just show the value
+      return <p>{entries[0][1] as string}</p>;
+    }
     if (entries.length === 0) return null;
     return (
       <div className="space-y-1">
         {entries.map(([key, val]) => (
-          <div key={key} className="flex gap-2">
-            <span className="font-medium">{key}:</span>
-            <span>{renderValue(val)}</span>
-          </div>
+          <p key={key} className="text-gray-700">
+          <span className="font-medium">{key}: </span>
+          {val as string}
+        </p>
         ))}
       </div>
     );
