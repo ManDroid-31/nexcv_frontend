@@ -1,16 +1,16 @@
 "use client";
 
-import { UserButton, SignedIn, useUser } from '@clerk/nextjs';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { useUser } from '@clerk/nextjs';
 import { Plus, Linkedin, Eye, Download, Edit3, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ResumeData } from '@/types/resume';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useUserCredits } from '@/hooks/use-user-credits';
+import { useCredits } from '@/hooks/use-credits';
 import { useResumeStore } from '@/stores/resume-store';
 import { toast } from 'sonner';
 import { fetchLinkedInResume } from '@/data/resume';
+import { AppNavbar } from '@/components/AppNavbar';
 
 // Client-side only date formatter to prevent hydration mismatch
 const formatDate = (dateString: string | undefined) => {
@@ -30,10 +30,12 @@ export default function DashboardClient() {
   const [showLinkedInModal, setShowLinkedInModal] = useState(false);
   const [linkedInUrl, setLinkedInUrl] = useState('');
   const [mounted, setMounted] = useState(false);
-  const { user } = useUser();
-  const { credits, isLoading: creditsLoading } = useUserCredits();
+  const { user, isLoaded } = useUser();
+  const { balance: credits, loading: creditsLoading } = useCredits();
   const resumeStore = useResumeStore();
   const resumes = resumeStore.resumes || [];
+  const isLoading = resumeStore.isLoading;
+  const { isDraft } = resumeStore;
 
   // Always fetch resumes on mount and when a resume is created/deleted
   useEffect(() => {
@@ -41,7 +43,7 @@ export default function DashboardClient() {
     if (user?.id) {
       resumeStore.listResumes(user.id);
     }
-  }, [user?.id]);
+  }, [user?.id, resumeStore]);
 
   // Refetch resumes after create/delete
   const refreshResumes = () => {
@@ -150,6 +152,7 @@ export default function DashboardClient() {
       refreshResumes();
       toast.success('Resume created!');
       router.push(`/editor/${newResume?.id}`);
+      window.dispatchEvent(new Event('refresh-credits'));
     } catch {
       toast.error('Failed to create resume');
     } finally {
@@ -184,6 +187,7 @@ export default function DashboardClient() {
       setShowLinkedInModal(false);
       setLinkedInUrl('');
       router.push(`/editor/${importedResume.id}`);
+      window.dispatchEvent(new Event('refresh-credits'));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to import LinkedIn profile';
       toast.error(errorMessage);
@@ -201,6 +205,7 @@ export default function DashboardClient() {
       await resumeStore.deleteResume(resumeId, user?.id);
       refreshResumes();
       toast.success('Resume deleted successfully');
+      window.dispatchEvent(new Event('refresh-credits'));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete resume';
       toast.error(errorMessage);
@@ -209,11 +214,20 @@ export default function DashboardClient() {
     }
   };
 
-  if (!mounted) {
+  useEffect(() => {
+    if (isLoaded && !user) {
+      router.push('/sign-in');
+    }
+  }, [isLoaded, user, router]);
+
+  if (!mounted || isLoading || !isLoaded || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/60">
         <div className="flex items-center justify-center h-screen">
-          <div className="text-sm text-muted-foreground">Loading...</div>
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+            <div className="text-sm text-muted-foreground">Loading your resumes...</div>
+          </div>
         </div>
       </div>
     );
@@ -221,24 +235,7 @@ export default function DashboardClient() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/60">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-30 bg-background/80 backdrop-blur border-b shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <span className="font-extrabold text-2xl tracking-tight text-primary">NexCV</span>
-            <span className="hidden md:inline text-muted-foreground font-medium text-sm ml-2">AI Resume Builder</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full text-sm font-semibold">
-              {creditsLoading ? 'Loading credits...' : `${credits ?? 0} credits`}
-            </div>
-            <ThemeToggle />
-            <SignedIn>
-              <UserButton afterSignOutUrl="/" />
-            </SignedIn>
-          </div>
-        </div>
-      </nav>
+      <AppNavbar />
 
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center gap-8">
@@ -301,8 +298,15 @@ export default function DashboardClient() {
                 </div>
                 <div className="transition-all duration-200 group-hover:opacity-0 group-hover:pointer-events-none opacity-100 z-10">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${resume.status === 'Published' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'}`}>{resume.status || 'Draft'}</span>
-                    <span className="text-xs text-muted-foreground">{resume.views || 0} views</span>
+                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                      isDraft(resume.id) 
+                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400' 
+                        : resume.status === 'Published' 
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' 
+                          : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>
+                      {isDraft(resume.id) ? 'Draft' : (resume.status || 'Saved')}
+                    </span>
                   </div>
                   <div className="text-xs text-muted-foreground mb-2">Modified {formatDate(resume.updatedAt)}</div>
                 </div>
@@ -311,7 +315,7 @@ export default function DashboardClient() {
                     <button className="p-2 rounded-lg bg-secondary cursor-pointer text-white hover:bg-secondary/90 shadow flex items-center gap-1" onClick={e => { e.stopPropagation(); router.push(`/editor/${resume.id}`); }}>
                       <Edit3 className="w-4 h-4" /> Edit
                     </button>
-                    <button className="p-2 rounded-lg bg-muted text-primary cursor-pointer hover:bg-muted/80 shadow flex items-center gap-1" onClick={e => { e.stopPropagation(); router.push(`/resume/${resume.id}`); }}>
+                    <button className="p-2 rounded-lg bg-muted text-primary cursor-pointer hover:bg-muted/80 shadow flex items-center gap-1" onClick={e => { e.stopPropagation(); router.push(`/resumes/${resume.id}`); }}>
                       <Eye className="w-4 h-4" /> View
                     </button>
                     <button className="p-2 rounded-lg bg-muted text-primary cursor-pointer hover:bg-muted/80 shadow flex items-center gap-1" onClick={e => { e.stopPropagation(); /* TODO: implement download/export */ }}>
@@ -344,8 +348,17 @@ export default function DashboardClient() {
 
       {/* LinkedIn Import Modal */}
       {showLinkedInModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-lg p-6 w-full max-w-md">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 pointer-events-auto"
+          onClick={() => {
+            setShowLinkedInModal(false);
+            setLinkedInUrl('');
+          }}
+        >
+          <div
+            className="bg-background rounded-lg p-6 w-full max-w-md relative pointer-events-auto shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Import from LinkedIn</h3>
               <button
@@ -409,7 +422,7 @@ export default function DashboardClient() {
                   setShowLinkedInModal(false);
                   setLinkedInUrl('');
                 }}
-                className="px-4 py-2 border border-input rounded-md hover:bg-muted"
+                className="px-4 py-2 border border-env.NEXT_PUBLIC_BACKEND_URLrounded-md hover:bg-muted"
                 disabled={importing}
               >
                 Cancel

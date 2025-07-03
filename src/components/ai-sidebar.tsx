@@ -12,11 +12,9 @@ import { Sparkles, Send, Wand2, FileText, Target, Lightbulb, CheckCircle, Clock 
 interface AISidebarProps {
   isOpen: boolean
   onClose: () => void
-  resumeData: ResumeData
-  onUpdateResume: (data: ResumeData) => void
 }
 
-export function AISidebar({ isOpen, onClose, resumeData, onUpdateResume }: AISidebarProps) {
+export function AISidebar({ isOpen, onClose }: AISidebarProps) {
   const [message, setMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [suggestions, setSuggestions] = useState([

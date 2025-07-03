@@ -2,10 +2,11 @@
 
 import { useSearchParams } from 'next/navigation'
 import { ResumeData } from '@/types/resume'
+import React, { Suspense } from 'react'
 
-export default function ModernTemplate() {
+function ModernTemplateInner() {
   const searchParams = useSearchParams()
-  const data = searchParams.get('data')
+  const data = (searchParams as URLSearchParams).get('data')
   
   if (!data) {
     return <div>No resume data provided</div>
@@ -105,8 +106,8 @@ export default function ModernTemplate() {
                       </div>
                     )}
                   </div>
-                  {project.url && (
-                    <a href={project.url} className="text-blue-600 hover:underline text-sm">
+                  {(project.githubUrl || project.liveUrl) && (
+                    <a href={project.githubUrl || project.liveUrl} className="text-blue-600 hover:underline text-sm" target="_blank" rel="noopener noreferrer">
                       View Project
                     </a>
                   )}
@@ -137,5 +138,13 @@ export default function ModernTemplate() {
         </section>
       )}
     </div>
+  )
+}
+
+export default function ModernTemplate() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ModernTemplateInner />
+    </Suspense>
   )
 } 

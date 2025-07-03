@@ -120,15 +120,16 @@ function isValidObjectId(id: string | string[] | undefined): boolean {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     const { id } = req.query;
     // Only allow unauthenticated access for GET /api/resumes/[id] (not 'all')
     if (!id || id === 'all') {
       // ... existing logic for 'all' resumes, requires auth ...
-      const { userId } = getAuth(req);
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
-      }
       const backendUrl = `${process.env.BACKEND_URL}/api/resumes`;
       if (req.method === 'GET') {
         const backendRes = await fetch(backendUrl, {
@@ -155,14 +156,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (!isValidObjectId(id)) {
       return res.status(400).json({ error: 'Invalid resume ID format' });
     }
-
+    
     const backendUrl = `${process.env.BACKEND_URL}/api/resumes/${id}`;
-
+    
     if (req.method === 'GET') {
-      // Try to get userId, but allow missing userId for public resumes
-      const { userId } = getAuth(req);
+      // Support view param in body or query
+      const view = req.body?.view || req.query?.view;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (userId) headers['x-clerk-user-id'] = userId;
+      if (view === 'publicview') {
+        headers['x-resume-view'] = 'publicview';
+        // Do NOT send x-clerk-user-id for publicview
+      } else {
+        if (view === 'ownerview') headers['x-resume-view'] = 'ownerview';
+        headers['x-clerk-user-id'] = userId;
+      }
       const backendRes = await fetch(backendUrl, {
         method: 'GET',
         headers,
@@ -175,28 +182,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         });
       }
       const data = await backendRes.json();
-      // If resume is public, allow access without auth
-      if (
-        data.visibility === 'public' ||
-        data.isPublic === true ||
-        (data.data && data.data.isPublic === true)
-      ) {
-        return res.status(200).json(data);
-      }
-      // If not public, require auth
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized: Resume is not public' });
-      }
-      // Otherwise, return the resume (user is authenticated)
       return res.status(200).json(data);
     }
 
     // For PUT requests (update resume)
     if (req.method === 'PUT') {
-      const { userId } = getAuth(req);
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
-      }
       const { title, template, visibility, ...resumeData } = req.body;
 
       // Get template info and default layout if template is being updated
@@ -242,10 +232,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // For DELETE requests (delete resume)
     if (req.method === 'DELETE') {
-      const { userId } = getAuth(req);
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
-      }
       const backendRes = await fetch(backendUrl, {
         method: 'DELETE',
         headers: {

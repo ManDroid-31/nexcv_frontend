@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const backendUrl = `${process.env.AI_BACKEND_URL || 'http://localhost:5000'}/api/ai/chat`;
+    const backendUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/ai/chat`;
     console.log('[Chat API] Sending request to backend:', backendUrl);
     
     const backendRes = await fetch(backendUrl, {

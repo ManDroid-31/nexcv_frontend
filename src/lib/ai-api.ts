@@ -22,7 +22,7 @@ export async function chatWithAI({ message, conversationId, resume, userId }: {
   console.log('[AI API] POST /chat', { userId: userIdLog, conversationId });
   
   try {
-    const backendUrl = process.env.AI_BACKEND_URL || 'http://localhost:5000';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
     console.log('[AI API] Using backend URL:', backendUrl);
     
     const res = await fetch('/api/ai/chat', {
@@ -43,7 +43,7 @@ export async function chatWithAI({ message, conversationId, resume, userId }: {
           throw new Error('AI service is not running. Please ensure the AI backend is running at ' + backendUrl);
         }
         throw new Error(errorData.error || errText);
-      } catch (parseError) {
+      } catch {
         throw new Error(errText);
       }
     }

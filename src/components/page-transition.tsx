@@ -1,24 +1,16 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 export function PageTransition() {
   const [isLoading, setIsLoading] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
 
   useEffect(() => {
-    const handleStart = () => setIsLoading(true);
     const handleComplete = () => {
       setTimeout(() => setIsLoading(false), 300);
-    };
-
-    // Listen for route changes
-    const handleRouteChange = () => {
-      setIsLoading(true);
-      setTimeout(() => setIsLoading(false), 500);
     };
 
     // Use a timeout to simulate loading completion

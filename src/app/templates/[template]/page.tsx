@@ -48,10 +48,10 @@ interface ResumeData {
 
 export default function TemplatePage() {
   const searchParams = useSearchParams()
-  const data = searchParams.get('data')
+  const data = (searchParams as URLSearchParams).get('data')
   
   if (!data) {
-    return <div>No data provided</div>
+    return <div>No resume data provided</div>
   }
 
   try {

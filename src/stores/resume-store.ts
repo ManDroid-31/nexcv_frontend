@@ -15,6 +15,8 @@ interface ResumeState {
   error: string | null;
   lastUpdate: number;
   currentTemplate: string;
+  // Draft tracking per resume
+  draftStatus: Record<string, { hasUnsavedChanges: boolean; lastSavedAt: number | null }>;
   setResumeData: (data: ResumeData) => void;
   updateResumeData: (data: Partial<ResumeData>) => void;
   clearResumeData: () => void;
@@ -23,6 +25,9 @@ interface ResumeState {
   setPreviewData: (data: ResumeData | null) => void;
   setIsLoading: (loading: boolean) => void;
   setCurrentTemplate: (template: string) => void;
+  // Draft actions
+  markAsSaved: (resumeId?: string) => void;
+  markAsUnsaved: (resumeId?: string) => void;
   // Async actions
   loadResume: (id: string, userId?: string) => Promise<void>;
   saveResume: (data: ResumeData, userId?: string, id?: string) => Promise<ResumeData>;
@@ -31,6 +36,8 @@ interface ResumeState {
   updatePreviewData: (data: Partial<ResumeData>) => void;
   // Getter to ensure previewData is always available
   getPreviewData: () => ResumeData | null;
+  // Getter to check if resume is in draft state
+  isDraft: (resumeId?: string) => boolean;
 }
 
 // Create store
@@ -50,11 +57,18 @@ export const useResumeStore = create<ResumeState>()(
         error: null,
         lastUpdate: Date.now(),
         currentTemplate: 'modern',
+        // Draft tracking per resume
+        draftStatus: {},
         setResumeData: (data: ResumeData) => set({
           resumeData: data,
           previewData: data,
           lastUpdate: Date.now(),
           error: null,
+          // If data has an ID, it's loaded from backend, so mark as saved
+          draftStatus: data.id ? {
+            ...get().draftStatus,
+            [data.id]: { hasUnsavedChanges: false, lastSavedAt: Date.now() }
+          } : get().draftStatus,
         }),
         updateResumeData: (data: Partial<ResumeData>) => set((state) => {
           const newData = state.resumeData ? { ...state.resumeData, ...data } : null
@@ -64,6 +78,17 @@ export const useResumeStore = create<ResumeState>()(
             lastUpdate: Date.now(),
             error: null,
           };
+          
+          // Mark as having unsaved changes when data is updated
+          if (newData?.id) {
+            newState.draftStatus = {
+              ...state.draftStatus,
+              [newData.id]: { 
+                hasUnsavedChanges: true, 
+                lastSavedAt: state.draftStatus[newData.id]?.lastSavedAt || null 
+              }
+            };
+          }
           
           // For immediate feedback, update preview data immediately for certain fields
           if (newData) {
@@ -99,16 +124,59 @@ export const useResumeStore = create<ResumeState>()(
         setPreviewData: (data: ResumeData | null) => set({ previewData: data }),
         setIsLoading: (loading: boolean) => set({ isLoading: loading }),
         setCurrentTemplate: (template: string) => set({ currentTemplate: template }),
+        // Draft actions
+        markAsSaved: (resumeId?: string) => set((state) => {
+          const targetId = resumeId || state.resumeData?.id;
+          if (!targetId) return state;
+          
+          return {
+            draftStatus: {
+              ...state.draftStatus,
+              [targetId]: { hasUnsavedChanges: false, lastSavedAt: Date.now() }
+            }
+          };
+        }),
+        markAsUnsaved: (resumeId?: string) => set((state) => {
+          const targetId = resumeId || state.resumeData?.id;
+          if (!targetId) return state;
+          
+          return {
+            draftStatus: {
+              ...state.draftStatus,
+              [targetId]: { 
+                hasUnsavedChanges: true, 
+                lastSavedAt: state.draftStatus[targetId]?.lastSavedAt || null 
+              }
+            }
+          };
+        }),
         // Getter to ensure previewData is always available
         getPreviewData: () => {
           const state = get();
           return state.previewData || state.resumeData;
         },
+        // Getter to check if resume is in draft state
+        isDraft: (resumeId?: string) => {
+          const state = get();
+          const targetId = resumeId || state.resumeData?.id;
+          if (!targetId) return false;
+          return state.draftStatus[targetId]?.hasUnsavedChanges || false;
+        },
         loadResume: async (id: string, userId?: string) => {
           try {
             set({ isLoading: true });
             const data = await getResumeById(id, userId);
-            set({ resumeData: data, previewData: data, error: null, isLoading: false });
+            set({ 
+              resumeData: data, 
+              previewData: data, 
+              error: null, 
+              isLoading: false,
+              // Mark as saved when loaded from backend
+              draftStatus: {
+                ...get().draftStatus,
+                [id]: { hasUnsavedChanges: false, lastSavedAt: Date.now() }
+              }
+            });
           } catch (err) {
             set({ error: err instanceof Error ? err.message : 'Failed to load resume', isLoading: false });
           }
@@ -122,7 +190,17 @@ export const useResumeStore = create<ResumeState>()(
             } else {
               savedData = await createResume(data, userId);
             }
-            set({ resumeData: savedData, previewData: savedData, error: null, isLoading: false });
+            set({ 
+              resumeData: savedData, 
+              previewData: savedData, 
+              error: null, 
+              isLoading: false,
+              // Mark as saved after successful save
+              draftStatus: {
+                ...get().draftStatus,
+                [savedData.id!]: { hasUnsavedChanges: false, lastSavedAt: Date.now() }
+              }
+            });
             return savedData;
           } catch (err) {
             set({ error: err instanceof Error ? err.message : 'Failed to save resume', isLoading: false });
@@ -133,7 +211,16 @@ export const useResumeStore = create<ResumeState>()(
           try {
             set({ isLoading: true });
             await deleteResume(id, userId);
-            set({ resumeData: null, previewData: null, error: null, isLoading: false });
+            const state = get();
+            const newDraftStatus = { ...state.draftStatus };
+            delete newDraftStatus[id];
+            set({ 
+              resumeData: null, 
+              previewData: null, 
+              error: null, 
+              isLoading: false,
+              draftStatus: newDraftStatus,
+            });
           } catch (err) {
             set({ error: err instanceof Error ? err.message : 'Failed to delete resume', isLoading: false });
           }
@@ -158,6 +245,7 @@ export const useResumeStore = create<ResumeState>()(
         previewData: state.previewData,
         resumes: state.resumes,
         currentTemplate: state.currentTemplate,
+        draftStatus: state.draftStatus,
       })
     }
   )

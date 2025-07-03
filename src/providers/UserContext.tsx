@@ -1,6 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { useUser } from '@clerk/nextjs';
+import { getCreditBalance } from '@/data/credits';
 
 interface UserInfo extends Record<string, unknown> {
   profession?: string;
@@ -25,42 +27,49 @@ const UserContext = createContext<UserContextType>({
 export const useUserContext = () => useContext(UserContext);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useUser();
   const [credits, setCredits] = useState<number | null>(null);
-  const [user, setUser] = useState<UserInfo | null>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
+    if (!user?.id) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
+    
     try {
-      const [userRes, creditsRes] = await Promise.all([
-        fetch('/api/protected/me'),
-        fetch('/api/protected/me/credits'),
-      ]);
-      if (!userRes.ok) throw new Error('Failed to fetch user info');
-      if (!creditsRes.ok) throw new Error('Failed to fetch credits');
-      const userData = await userRes.json();
-      const creditsData = await creditsRes.json();
-      setUser(userData);
-      setCredits(creditsData.credits);
+      // Fetch user credits from the new credit system
+      const creditsResponse = await getCreditBalance(user.id);
+      
+      setCredits(creditsResponse.creditBalance);
+      setUserInfo({
+        id: user.id,
+        email: user.emailAddresses[0]?.emailAddress,
+        name: user.fullName,
+        profession: user.publicMetadata?.profession as string,
+      });
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id, user?.emailAddresses, user?.fullName, user?.publicMetadata?.profession]);
 
   useEffect(() => {
     fetchUserData();
-  }, []);
+  }, [fetchUserData]);
 
   const refresh = () => {
     fetchUserData();
   };
 
   return (
-    <UserContext.Provider value={{ credits, user, isLoading, error, refresh }}>
+    <UserContext.Provider value={{ credits, user: userInfo, isLoading, error, refresh }}>
       {children}
     </UserContext.Provider>
   );

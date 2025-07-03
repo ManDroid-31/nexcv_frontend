@@ -2,10 +2,11 @@
 
 import { useSearchParams } from 'next/navigation'
 import { ResumeData } from '@/types/resume'
+import React, { Suspense } from 'react'
 
-export default function ExecutiveTemplate() {
+function ExecutiveTemplateInner() {
   const searchParams = useSearchParams()
-  const data = searchParams.get('data')
+  const data = (searchParams as URLSearchParams).get('data')
   
   if (!data) {
     return <div>No resume data provided</div>
@@ -114,8 +115,8 @@ export default function ExecutiveTemplate() {
                           </div>
                         )}
                       </div>
-                      {project.url && (
-                        <a href={project.url} className="text-blue-600 hover:underline text-sm">
+                      {(project.githubUrl || project.liveUrl) && (
+                        <a href={project.githubUrl || project.liveUrl} className="text-blue-600 hover:underline text-sm" target="_blank" rel="noopener noreferrer">
                           View Project
                         </a>
                       )}
@@ -169,5 +170,13 @@ export default function ExecutiveTemplate() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ExecutiveTemplate() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ExecutiveTemplateInner />
+    </Suspense>
   )
 } 

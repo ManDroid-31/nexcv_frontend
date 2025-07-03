@@ -8,6 +8,7 @@ export * from './template-selector';
 export * from './mock-auth';
 export * from './ai-sidebar';
 export * from './export-modal';
+export * from './credit-purchase-modal';
 // Re-export Lucide React icons
 export { 
   Code, 

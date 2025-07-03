@@ -17,8 +17,8 @@ import { User, LogOut } from "lucide-react"
 interface AuthContextType {
   isSignedIn: boolean
   user: { name: string; email: string; avatar?: string } | null
-  signIn: (email: string, password: string) => void
-  signUp: (email: string, password: string, name: string) => void
+  signIn: (email: string) => void
+  signUp: (email: string, name: string) => void
   signOut: () => void
 }
 
@@ -28,13 +28,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSignedIn, setIsSignedIn] = useState(false)
   const [user, setUser] = useState<{ name: string; email: string; avatar?: string } | null>(null)
 
-  const signIn = (email: string, password: string) => {
+  const signIn = (email: string) => {
     // Mock sign in
     setIsSignedIn(true)
     setUser({ name: "John Doe", email, avatar: "/placeholder.svg?height=32&width=32" })
   }
 
-  const signUp = (email: string, password: string, name: string) => {
+  const signUp = (email: string, name: string) => {
     // Mock sign up
     setIsSignedIn(true)
     setUser({ name, email, avatar: "/placeholder.svg?height=32&width=32" })
@@ -62,15 +62,13 @@ function useAuth() {
 export function SignInButton({ children, mode = "redirect" }: { children: ReactNode; mode?: "modal" | "redirect" }) {
   const [isOpen, setIsOpen] = useState(false)
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const { signIn } = useAuth()
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault()
-    signIn(email, password)
+    signIn(email)
     setIsOpen(false)
     setEmail("")
-    setPassword("")
   }
 
   if (mode === "modal") {
@@ -93,17 +91,6 @@ export function SignInButton({ children, mode = "redirect" }: { children: ReactN
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-              />
-            </div>
             <Button type="submit" className="w-full">
               Sign In
             </Button>
@@ -113,22 +100,20 @@ export function SignInButton({ children, mode = "redirect" }: { children: ReactN
     )
   }
 
-  return <div onClick={() => signIn("demo@example.com", "password")}>{children}</div>
+  return <div onClick={() => signIn("demo@example.com")}>{children}</div>
 }
 
 export function SignUpButton({ children, mode = "redirect" }: { children: ReactNode; mode?: "modal" | "redirect" }) {
   const [isOpen, setIsOpen] = useState(false)
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [name, setName] = useState("")
   const { signUp } = useAuth()
 
   const handleSignUp = (e: React.FormEvent) => {
     e.preventDefault()
-    signUp(email, password, name)
+    signUp(email, name)
     setIsOpen(false)
     setEmail("")
-    setPassword("")
     setName("")
   }
 
@@ -162,17 +147,6 @@ export function SignUpButton({ children, mode = "redirect" }: { children: ReactN
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Create a password"
-                required
-              />
-            </div>
             <Button type="submit" className="w-full">
               Sign Up
             </Button>
@@ -182,7 +156,7 @@ export function SignUpButton({ children, mode = "redirect" }: { children: ReactN
     )
   }
 
-  return <div onClick={() => signUp("demo@example.com", "password", "Demo User")}>{children}</div>
+  return <div onClick={() => signUp("demo@example.com", "Demo User")}>{children}</div>
 }
 
 export function SignedIn({ children }: { children: ReactNode }) {
@@ -195,7 +169,7 @@ export function SignedOut({ children }: { children: ReactNode }) {
   return !isSignedIn ? <>{children}</> : null
 }
 
-export function UserButton({ afterSignOutUrl }: { afterSignOutUrl?: string }) {
+export function UserButton() {
   const { user, signOut } = useAuth()
 
   if (!user) return null

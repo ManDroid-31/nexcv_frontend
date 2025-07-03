@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { getTemplate } from "./templates";
+import { Onyx } from "./templates/onyx";
 import type { ResumeData } from "@/types/resume";
 
 const A4_WIDTH = 794;
@@ -19,7 +20,8 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
   const lastDataRef = useRef<string>("");
   const lastTemplateRef = useRef<string>("");
   
-  const TemplateComponent = getTemplate(template);
+  const TemplateComponent = getTemplate(template) || Onyx;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const sectionOrder = data?.sectionOrder || [];
 
   // Memoize the data string to detect actual changes

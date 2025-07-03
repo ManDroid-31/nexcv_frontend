@@ -13,6 +13,7 @@ import { useUser} from "@clerk/nextjs"
 import ReactMarkdown from 'react-markdown';
 import { ResumeData } from '@/types/resume';
 import { toast } from 'sonner';
+import { useCredits } from '@/hooks/use-credits';
 
 interface AIPanelProps {
   onApplyEnhanced?: (enhancedResume: ResumeData) => void;
@@ -38,6 +39,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
   } = useAIStore();
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { fetchBalance } = useCredits();
 
   // Calculate dynamic width based on content
   const getDynamicWidth = useMemo(() => {
@@ -80,19 +82,37 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
     }
   }, [chatHistory]);
 
-  const handleSend = async () => {
+  const handleSend = async (): Promise<void> => {
     console.log("sending message to ai")
     if (!input.trim() || !resumeData) return;
-    await sendMessage({ message: input, userId, resume: resumeData });
-    setInput('');
+    try {
+      await sendMessage({ message: input, userId, resume: resumeData });
+      setInput('');
+      await fetchBalance(true); // Refresh credits after AI call
+      window.dispatchEvent(new Event('refresh-credits'));
+    } catch (err: unknown) {
+      if (err instanceof Error && (err.message.includes('Not enough credits') || err.message.includes('403'))) {
+        toast.error('Not enough credits. Please purchase more to use AI features.');
+        await fetchBalance(true);
+      }
+    }
   };
 
-  const handleEnhance = async () => {
+  const handleEnhance = async (): Promise<void> => {
     if (!resumeData) {
       toast.error('No resume data available to enhance');
       return;
     }
-    await enhanceResume({ resume: resumeData, userId });
+    try {
+      await enhanceResume({ resume: resumeData, userId });
+      await fetchBalance(true); // Refresh credits after AI call
+      window.dispatchEvent(new Event('refresh-credits'));
+    } catch (err: unknown) {
+      if (err instanceof Error && (err.message.includes('Not enough credits') || err.message.includes('403'))) {
+        toast.error('Not enough credits. Please purchase more to use AI features.');
+        await fetchBalance(true);
+      }
+    }
   };
 
   const handleApplyEnhanced = () => {

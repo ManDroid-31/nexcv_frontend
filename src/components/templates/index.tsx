@@ -36,12 +36,12 @@ export const templateMap: Record<string, React.ComponentType<TemplateProps>> = {
   rhyhorn: Rhyhorn,
 };
 
-export const getTemplate = (template: string) => {
+export const getTemplate = (template: string): React.ComponentType<TemplateProps> | undefined => {
   return templateMap[template] || Onyx;
 };
 
 // Default layouts for each template
-const TEMPLATE_DEFAULT_LAYOUTS: Record<string, any> = {
+const TEMPLATE_DEFAULT_LAYOUTS: Record<string, unknown> = {
   onyx: {
     margins: { top: 40, bottom: 40, left: 40, right: 40 },
     spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },

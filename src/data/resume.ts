@@ -1,3 +1,5 @@
+// backend api call too return crud operations result 
+
 import { ResumeData } from '@/types/resume';
 
 // Use relative URLs for all resume requests (proxy through Next.js API)
@@ -56,8 +58,12 @@ export const getResumes = async (userId?: string): Promise<ResumeData[]> => {
   }
 };
 
-export const getResumeById = async (id: string, userId?: string): Promise<ResumeData> => {
-  const res = await fetch(`${BASE_URL}/${id}`, {
+export const getResumeById = async (
+  id: string,
+  userId?: string,
+  view: 'ownerview' | 'publicview' | 'guestview' = 'ownerview'
+): Promise<ResumeData> => {
+  const res = await fetch(`${BASE_URL}/${id}?view=${view}`, {
     headers: getAuthHeaders(userId),
   });
   if (res.status === 401) throw new Error('Unauthorized');
@@ -66,14 +72,46 @@ export const getResumeById = async (id: string, userId?: string): Promise<Resume
   return transformBackendResponse(backendResume);
 };
 
-export const createResume = async (data: ResumeData, userId?: string): Promise<ResumeData> => {
+export const createResume = async (data: Partial<ResumeData>, userId?: string): Promise<ResumeData> => {
+  // Merge provided data with defaults
+  const merged = { ...defaultResumeData, ...data };
+
+  // Extract top-level fields
+  const { title, template, isPublic, visibility, ...rest } = merged;
+
+  // Remove undefined/null from rest
+  const cleanData: Record<string, unknown> = {};
+  Object.entries(rest).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) cleanData[k] = v;
+  });
+
+  // Build payload
+  const payload = {
+    title: title ?? "Untitled Resume",
+    template: template ?? "onyx",
+    visibility: typeof visibility === "string" ? visibility : (isPublic ? "public" : "private"),
+    data: cleanData,
+  };
+
+  // Log payload for debugging
+  if (typeof window !== "undefined") {
+    // Client-side
+    console.log("[createResume] Payload to backend:", payload);
+  } else {
+    // Server-side
+    console.log("[createResume] Payload to backend:", JSON.stringify(payload, null, 2));
+  }
+
   const res = await fetch(BASE_URL, {
     method: 'POST',
     headers: getAuthHeaders(userId),
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
   if (res.status === 401) throw new Error('Unauthorized');
-  if (!res.ok) throw new Error('Failed to create resume');
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to create resume: ${errorText}`);
+  }
   const backendResume = await res.json();
   return transformBackendResponse(backendResume);
 };
@@ -94,6 +132,7 @@ export const deleteResume = async (id: string, userId?: string): Promise<void> =
   const res = await fetch(`${BASE_URL}/${id}`, { 
     method: 'DELETE',
     headers: getAuthHeaders(userId),
+    
   });
   if (res.status === 401) throw new Error('Unauthorized');
   if (!res.ok) throw new Error('Failed to delete resume');

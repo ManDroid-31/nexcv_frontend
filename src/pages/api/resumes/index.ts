@@ -1,119 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getAuth } from '@clerk/nextjs/server';
 
+const BACKEND_URL = process.env.BACKEND_URL;
 type ResponseData = Record<string, unknown> | { error: string };
-
-// Available templates with their default layouts - using actual template names from components
-const AVAILABLE_TEMPLATES = {
-  onyx: {
-    name: 'Onyx',
-    description: 'Clean and professional black theme with elegant typography',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  },
-  pikachu: {
-    name: 'Pikachu',
-    description: 'Energetic yellow-orange gradient with card-based sections',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  },
-  gengar: {
-    name: 'Gengar',
-    description: 'Dark purple theme with modern styling',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  },
-  kakuna: {
-    name: 'Kakuna',
-    description: 'Minimalist design with clean lines and subtle styling',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  },
-  azurill: {
-    name: 'Azurill',
-    description: 'Blue-themed modern design with professional layout',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  },
-  chikorita: {
-    name: 'Chikorita',
-    description: 'Green-themed academic style with structured layout',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  },
-  leafish: {
-    name: 'Leafish',
-    description: 'Fresh green design with natural styling',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  },
-  ditto: {
-    name: 'Ditto',
-    description: 'Adaptive design that adapts to content',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  },
-  bronzor: {
-    name: 'Bronzor',
-    description: 'Bronze-themed executive style with professional layout',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  },
-  rhyhorn: {
-    name: 'Rhyhorn',
-    description: 'Strong and bold design with powerful styling',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  },
-  nosepass: {
-    name: 'Nosepass',
-    description: 'Stable and reliable design with steady layout',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  },
-  glalie: {
-    name: 'Glalie',
-    description: 'Cool and sleek design with modern styling',
-    layout: {
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      spacing: { sectionGap: 32, paragraphGap: 16, lineHeight: 1.5 },
-      scale: 1,
-    }
-  }
-};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
   console.log('[API] /api/resumes', req.method, req.headers);
@@ -124,7 +13,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
     }
 
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000/api/resumes';
+    if (!process.env.NEXT_PUBLIC_BACKEND_URL) {
+      throw new Error('BACKEND_URL is not set in environment variables');
+    }
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
     // For GET requests (list resumes)
     if (req.method === 'GET') {
@@ -150,47 +42,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // For POST requests (create resume)
     if (req.method === 'POST') {
-      const { title, template = 'onyx', visibility = 'private', ...resumeData } = req.body;
-
-      // Get template info and default layout
-      const templateInfo = AVAILABLE_TEMPLATES[template as keyof typeof AVAILABLE_TEMPLATES] || AVAILABLE_TEMPLATES.onyx;
-
-      // Transform the data to match backend expectations
-      const backendPayload = {
-        title,
-        template,
-        visibility,
-        data: {
-          ...resumeData,
-          // Include template information and default layout
-          templateInfo,
-          availableTemplates: AVAILABLE_TEMPLATES,
-          layout: resumeData.layout || templateInfo.layout,
-        },
-      };
-
-      const backendRes = await fetch(backendUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-clerk-user-id': userId,
-        },
-        body: JSON.stringify(backendPayload),
-      });
-
-      if (!backendRes.ok) {
-        const errorText = await backendRes.text();
-        console.error(`Backend error ${backendRes.status}:`, errorText);
-        return res.status(backendRes.status).json({ 
-          error: `Backend error: ${backendRes.status} ${backendRes.statusText}` 
+      try {
+        const { userId } = getAuth(req);
+        if (!userId) {
+          return res.status(401).json({ error: 'Unauthorized: User not authenticated' });
+        }
+        if (!BACKEND_URL) {
+          throw new Error('BACKEND_URL is not set in environment variables');
+        }
+        // Parse and transform the body to match backend expectations
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        const { title="john doe", template="onyx", isPublic=false, visibility="private", ...rest } = body;
+        const backendPayload = {
+          title,
+          template,
+          visibility: typeof visibility === 'string' ? visibility : (isPublic ? 'public' : 'private'),
+          data: rest,
+        };
+        const backendRes = await fetch(`${BACKEND_URL}/api/resumes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-clerk-user-id': userId,
+          },
+          body: JSON.stringify(backendPayload),
         });
+        if (!backendRes.ok) {
+          const errorText = await backendRes.text();
+          return res.status(backendRes.status).json({ error: errorText });
+        }
+        const data = await backendRes.json();
+        return res.status(201).json(data);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        return res.status(500).json({ error: errorMessage });
       }
-
-      const data = await backendRes.json();
-      return res.status(backendRes.status).json(data);
     }
 
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.setHeader('Allow', ['GET', 'POST']);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('API Error:', errorMessage);

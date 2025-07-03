@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { ResumeData } from '@/types/resume';
 import { Loader2 } from "lucide-react";
 import DashboardClient from './DashboardClient';
 

@@ -3,13 +3,13 @@ import { GripVertical, Edit3 } from 'lucide-react';
 import { Input, Button } from '@/components';
 
 interface DraggableSectionProps {
-  id: string;
   title: string;
   children: React.ReactNode;
   onTitleChange?: (newTitle: string) => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
 }
 
-const DraggableSection: React.FC<DraggableSectionProps> = ({ id, title, children, onTitleChange }) => {
+const DraggableSection: React.FC<DraggableSectionProps> = ({ title, children, onTitleChange, dragHandleProps }) => {
   const [editing, setEditing] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
 
@@ -28,7 +28,11 @@ const DraggableSection: React.FC<DraggableSectionProps> = ({ id, title, children
   return (
     <div className="border rounded-lg bg-card shadow-sm mb-4 p-4 flex flex-col gap-2 group relative">
       <div className="flex items-center gap-2 mb-2">
-        <span className="cursor-grab text-muted-foreground select-none" title="Drag section">
+        <span
+          className="cursor-grab text-muted-foreground select-none"
+          title="Drag section"
+          {...dragHandleProps}
+        >
           <GripVertical className="w-4 h-4" />
         </span>
         {onTitleChange ? (

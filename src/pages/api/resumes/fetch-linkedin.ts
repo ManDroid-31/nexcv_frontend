@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(400).json({ error: 'linkedinUrl is required' });
     }
 
-    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:5000/api/resumes'}/fetch-linkedin`;
+    const backendUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/resumes/fetch-linkedin`;
 
     const backendRes = await fetch(backendUrl, {
       method: 'POST',

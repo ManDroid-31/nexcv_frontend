@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { useUser } from '@clerk/nextjs'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
@@ -42,10 +42,12 @@ import {
   useSensors,
   DragOverlay,
   DragStartEvent,
+  DragOverEvent,
 } from '@dnd-kit/core'
 import {
   arrayMove,
   SortableContext,
+  useSortable,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
@@ -53,8 +55,9 @@ import type { editor } from 'monaco-editor'
 import { getTemplateDefaultLayout } from '@/components/templates'
 import { getResumeById } from '@/data/resume'
 import { AIPanel } from '@/components/ai-panel'
-import { ResumeData, CustomSection, CustomSectionValue, KeyValuePair, ArrayObjectItem } from '@/types/resume'
+import { ResumeData, CustomSection, CustomSectionValue, KeyValuePair, ArrayObjectItem, Layout } from '@/types/resume'
 import { useResumeStore } from '@/stores/resume-store'
+import { AppNavbar } from '@/components/AppNavbar'
 
 // Dynamically import Monaco Editor with no SSR
 const MonacoEditor = dynamic(
@@ -185,18 +188,51 @@ function restoreIdsFromOriginal(original: ResumeData, edited: ResumeData): Resum
   return result;
 }
 
+// Restore SortableDraggableSection as a wrapper component to use useSortable outside the map
+function SortableDraggableSection({ id, title, children, onTitleChange, isDragging, isOverlay }: { id: string; title: string; children: React.ReactNode; onTitleChange?: (newName: string) => void; isDragging?: boolean; isOverlay?: boolean }) {
+  const { attributes, listeners, setNodeRef, isDragging: sortableDragging } = useSortable({ id });
+  // Determine if this section is being dragged (from dnd-kit or parent prop)
+  const dragging = typeof isDragging === 'boolean' ? isDragging : sortableDragging;
+  // Overlay: when rendering in DragOverlay
+  const overlay = !!isOverlay;
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        opacity: overlay ? 0.7 : dragging ? 0.5 : 1,
+        background: overlay || dragging ? 'rgba(240,240,255,0.95)' : undefined,
+        boxShadow: overlay || dragging ? '0 4px 24px 0 rgba(80,80,160,0.10)' : undefined,
+        border: overlay || dragging ? '2px solid #6366f1' : undefined,
+        zIndex: overlay ? 9999 : dragging ? 10 : 1,
+        width: '100%',
+        minWidth: 0,
+        transition: 'box-shadow 0.2s, opacity 0.2s',
+        pointerEvents: overlay ? 'none' : undefined,
+        position: overlay ? 'relative' : undefined,
+      }}
+      className={overlay ? 'block' : ''}
+    >
+      <DraggableSection
+        title={title}
+        onTitleChange={onTitleChange}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      >
+        {children}
+      </DraggableSection>
+    </div>
+  );
+}
 
 // main function and last 
 export default function ResumeEditor({ params }: PageProps) {
+  const { user } = useUser();
+
+  // All hooks must be called before any return
   const resolvedParams = React.use(params);
   const resumeId = resolvedParams.id;
-  const [editMode, setEditMode] = useState<EditMode>("form")
-
-  //UI componeents state handlers
+  const [editMode, setEditMode] = useState<EditMode>("form");
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-
-
   const [currentPage, setCurrentPage] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [editorWidth, setEditorWidth] = useState(50) // percentage
@@ -214,10 +250,11 @@ export default function ResumeEditor({ params }: PageProps) {
     error,
     setResumeData,
     updateResumeData,
-    saveResume
+    saveResume,
+    markAsSaved,
+    markAsUnsaved
   } = useResumeStore()
 
-  const { user } = useUser()
   const userId = user?.id
 
   const totalPages = RESUME_SECTIONS.length
@@ -246,6 +283,8 @@ export default function ResumeEditor({ params }: PageProps) {
     if (!resumeData) return;
     if (isResumeKey(key)) {
       updateResumeData({ [key]: value });
+      // Mark as unsaved when data is updated
+      markAsUnsaved(resumeData.id);
     } else {
       const customSection = resumeData.customSections.find(
         section => section.name.toLowerCase().replace(/\s+/g, '') === key
@@ -257,6 +296,8 @@ export default function ResumeEditor({ params }: PageProps) {
             : section
         );
         updateResumeData({ customSections: updatedSections });
+        // Mark as unsaved when data is updated
+        markAsUnsaved(resumeData.id);
       }
     }
   };
@@ -271,10 +312,20 @@ export default function ResumeEditor({ params }: PageProps) {
 
   // Add active section state
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null)
+  // Add state for the section currently being hovered over
+  const [overSectionId, setOverSectionId] = useState<string | null>(null)
 
   // Update handleDragStart to track active section
   const handleDragStart = (event: DragStartEvent) => {
     setActiveSectionId(String(event.active.id))
+    setOverSectionId(String(event.active.id))
+  }
+
+  // Handle drag over
+  const handleDragOver = (event: DragOverEvent) => {
+    if (event.over && event.over.id) {
+      setOverSectionId(String(event.over.id));
+    }
   }
 
   const handlePageChange = (page: number) => {
@@ -359,6 +410,7 @@ export default function ResumeEditor({ params }: PageProps) {
             // Patch: restore ids from original data
             const safeParsed = restoreIdsFromOriginal(resumeData, parsed);
             setResumeData(safeParsed);
+            markAsUnsaved(resumeId);
           }
         } catch {
           // Don't update state if JSON is invalid
@@ -399,8 +451,10 @@ export default function ResumeEditor({ params }: PageProps) {
       };
       await saveResume(saveData, userId, resumeId);
       // Refetch the latest resume from the backend
-      const updated = await getResumeById(resumeId, userId);
+      const updated = await getResumeById(resumeId, userId, 'ownerview');
       setResumeData(updated);
+      // Mark as saved after successful save
+      markAsSaved(resumeId);
       toast.success('Resume saved successfully');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save resume');
@@ -494,6 +548,7 @@ export default function ResumeEditor({ params }: PageProps) {
         customSections: [...resumeData.customSections, customSection],
         sectionOrder: [...resumeData.sectionOrder, newSectionKey]
       });
+      markAsUnsaved(resumeId);
       toast.success('New section added successfully');
     }
   };
@@ -517,6 +572,7 @@ export default function ResumeEditor({ params }: PageProps) {
         ...resumeData,
         sectionOrder: resumeData.sectionOrder.filter(section => section !== `custom:${customSection.id}`)
       });
+      markAsUnsaved(resumeId);
       toast.success('Section removed successfully');
     }
   };
@@ -548,6 +604,7 @@ export default function ResumeEditor({ params }: PageProps) {
                   ...resumeData,
                   sectionOrder: resumeData.sectionOrder.filter(section => section !== key)
                 });
+                markAsUnsaved(resumeId);
                 toast.success(`${title} section removed successfully`);
               }
             }
@@ -1243,32 +1300,36 @@ export default function ResumeEditor({ params }: PageProps) {
     typeInput.value = 'string';
   };
 
-  // Update the form fields rendering to use DraggableSection
-  const renderFormFields = () => {
-    if (!resumeData) return null
-    const sectionOrder = (resumeData?.sectionOrder || []).filter(k => k !== 'id');
+  // Move these to the top of ResumeEditor, not inside renderFormFields
+  const sectionOrder = useMemo(() => (resumeData?.sectionOrder || []).filter(k => k !== 'id'), [resumeData?.sectionOrder]);
+  const validSectionOrder = useMemo(() => {
     const allowedKeys = [
       'personalInfo', 'summary', 'experience', 'education', 'projects', 'skills',
       'title', 'slug', 'isPublic', 'template', 'tags', 'layout'
     ];
-    function isResumeKeyStrict(key: string): key is ResumeKey {
-      return allowedKeys.includes(key);
-    }
-    const validSectionOrder = sectionOrder.filter(isResumeKeyStrict);
-    const customSectionOrder = sectionOrder.filter(key => key.startsWith('custom:'));
+    return sectionOrder.filter((key) => allowedKeys.includes(key));
+  }, [sectionOrder]);
+  const customSectionOrder = useMemo(() => sectionOrder.filter(key => key.startsWith('custom:')), [sectionOrder]);
+
+  // Update the form fields rendering to use DraggableSection
+  const renderFormFields = () => {
+    if (!resumeData) return null;
     return (
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={event => {
           const { active, over } = event;
           setActiveSectionId(null);
+          setOverSectionId(null);
           if (over && active.id !== over.id) {
             const oldIndex = validSectionOrder.indexOf(active.id as ResumeKey);
             const newIndex = validSectionOrder.indexOf(over.id as ResumeKey);
             const newOrder = arrayMove(validSectionOrder, oldIndex, newIndex);
             updateResumeData({ sectionOrder: newOrder });
+            markAsUnsaved(resumeId);
           }
         }}
       >
@@ -1280,26 +1341,58 @@ export default function ResumeEditor({ params }: PageProps) {
             {/* Main sections */}
             {validSectionOrder.map((key) => {
               if (!allowedKeys.includes(key)) return null;
-                const value = getSectionValue(key);
-                if (value === undefined) return null;
+              const value = getSectionValue(key);
+              if (value === undefined) return null;
+              // Show drop indicator above the section being hovered
+              if (activeSectionId && overSectionId === key && activeSectionId !== key) {
                 return (
-                  <DraggableSection
-                    key={key}
-                    id={key}
-                    title={key.charAt(0).toUpperCase() + key.slice(1)}
-                  >
+                  <React.Fragment key={key}>
+                    <div style={{ height: '32px', background: 'rgba(99,102,241,0.10)', border: '2px dashed #6366f1', borderRadius: '0.5rem', margin: '12px 0' }} />
+                    <SortableDraggableSection
+                      id={key}
+                      title={key.charAt(0).toUpperCase() + key.slice(1)}
+                      isDragging={false}
+                    >
+                      {renderFormField(key, value)}
+                    </SortableDraggableSection>
+                  </React.Fragment>
+                );
+              }
+              // Normal rendering
+              return (
+                <SortableDraggableSection
+                  key={key}
+                  id={key}
+                  title={key.charAt(0).toUpperCase() + key.slice(1)}
+                  isDragging={false}
+                >
                   {renderFormField(key, value)}
-                  </DraggableSection>
+                </SortableDraggableSection>
               );
             })}
-
             {/* Custom sections */}
             {customSectionOrder.map((key) => {
-              const customId = key.replace('custom:', '')
-              const customSection = resumeData.customSections?.find((s: CustomSection) => s.id === customId)
-              if (!customSection) return null
+              const customId = key.replace('custom:', '');
+              const customSection = resumeData.customSections?.find((s: CustomSection) => s.id === customId);
+              if (!customSection) return null;
+              // Show drop indicator above the section being hovered
+              if (activeSectionId && overSectionId === key && activeSectionId !== key) {
+                return (
+                  <React.Fragment key={key}>
+                    <div style={{ height: '32px', background: 'rgba(99,102,241,0.10)', border: '2px dashed #6366f1', borderRadius: '0.5rem', margin: '12px 0' }} />
+                    <SortableDraggableSection
+                      id={key}
+                      title={customSection.name}
+                      isDragging={false}
+                    >
+                      {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, ''), customSection.value)}
+                    </SortableDraggableSection>
+                  </React.Fragment>
+                );
+              }
+              // Normal rendering
               return (
-                <DraggableSection
+                <SortableDraggableSection
                   key={key}
                   id={key}
                   title={customSection.name}
@@ -1312,13 +1405,14 @@ export default function ResumeEditor({ params }: PageProps) {
                       k === key ? `custom:${customSection.id}` : k
                     );
                     updateResumeData({ customSections: updatedSections, sectionOrder: updatedOrder });
+                    markAsUnsaved(resumeId);
                   }}
+                  isDragging={false}
                 >
                   {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, ''), customSection.value)}
-                </DraggableSection>
+                </SortableDraggableSection>
               );
             })}
-
             {/* Add New Section Button */}
             <Card>
               <CardHeader>
@@ -1360,8 +1454,7 @@ export default function ResumeEditor({ params }: PageProps) {
             </Card>
           </div>
         </SortableContext>
-
-        <DragOverlay adjustScale={true} dropAnimation={null}>
+        <DragOverlay adjustScale={false} dropAnimation={null}>
           {activeSectionId ? (() => {
             // Main section
             if (!activeSectionId.startsWith('custom:')) {
@@ -1370,35 +1463,33 @@ export default function ResumeEditor({ params }: PageProps) {
               const value = getSectionValue(activeSectionId);
               if (value === undefined) return null;
               return (
-                <div className="z-50 opacity-90">
-                  <DraggableSection
-                    id={activeSectionId}
-                    title={activeSectionId.charAt(0).toUpperCase() + activeSectionId.slice(1)}
-                  >
-                    {renderFormField(activeSectionId, value)}
-                  </DraggableSection>
-                </div>
+                <SortableDraggableSection
+                  id={activeSectionId}
+                  title={activeSectionId.charAt(0).toUpperCase() + activeSectionId.slice(1)}
+                  isOverlay
+                >
+                  {renderFormField(activeSectionId, value)}
+                </SortableDraggableSection>
               );
             }
             // Custom section
-            const customId = activeSectionId.replace('custom:', '')
-            const customSection = resumeData.customSections?.find(s => s.id === customId)
-            if (!customSection) return null
+            const customId = activeSectionId.replace('custom:', '');
+            const customSection = resumeData.customSections?.find(s => s.id === customId);
+            if (!customSection) return null;
             return (
-              <div className="z-50 opacity-90">
-                <DraggableSection
-                  id={activeSectionId}
-                  title={customSection.name}
-                >
-                  {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, ''), customSection.value)}
-                </DraggableSection>
-              </div>
-            )
+              <SortableDraggableSection
+                id={activeSectionId}
+                title={customSection.name}
+                isOverlay
+              >
+                {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, ''), customSection.value)}
+              </SortableDraggableSection>
+            );
           })() : null}
         </DragOverlay>
       </DndContext>
-    )
-  }
+    );
+  };
 
   // Update the Monaco editor onMount handler
   const handleEditorMount = (editor: editor.IStandaloneCodeEditor) => {
@@ -1417,6 +1508,7 @@ export default function ResumeEditor({ params }: PageProps) {
               // Patch: restore ids from original data
               const safeParsed = restoreIdsFromOriginal(resumeData, parsed);
               setResumeData(safeParsed);
+              markAsUnsaved(resumeId);
               toast.success("JSON is valid and applied");
             }
           } else {
@@ -1434,7 +1526,8 @@ export default function ResumeEditor({ params }: PageProps) {
     if (resumeId && userId) {
       (async () => {
         try {
-          const data = await getResumeById(resumeId, userId);
+          // Always use 'ownerview' for the logged-in user
+          const data = await getResumeById(resumeId, userId, 'ownerview');
           setResumeData(data);
         } catch {
           setResumeData({} as ResumeData);
@@ -1448,13 +1541,20 @@ export default function ResumeEditor({ params }: PageProps) {
   const handleResetLayout = () => {
     if (!resumeData) return;
     // You need to implement getTemplateDefaultLayout to return the default layout for a template
-    const defaultLayout = getTemplateDefaultLayout(resumeData.template);
+    const defaultLayout = getTemplateDefaultLayout(resumeData.template) as Layout;
     setResumeData({
       ...resumeData,
       layout: defaultLayout
     });
+    markAsUnsaved(resumeId);
     toast.success('Layout reset to template default!');
   };
+
+  // Move allowedKeys to top-level scope so it is accessible everywhere
+  const allowedKeys = [
+    'personalInfo', 'summary', 'experience', 'education', 'projects', 'skills',
+    'title', 'slug', 'isPublic', 'template', 'tags', 'layout'
+  ];
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
@@ -1468,18 +1568,27 @@ export default function ResumeEditor({ params }: PageProps) {
     return <div>No resume data found</div>
   }
 
+  if (!userId) {
+    return <div>Loading user...</div>;
+  }
+
   return (
     <AuthProvider>
+      <AppNavbar />
       <div className="min-h-screen bg-background">
         <EditorHeader
           title={resumeData.title}
           isPublic={resumeData.visibility === "public"}
-          onTitleChange={(title) => updateResumeData({ title })}
+          onTitleChange={(title) => {
+            updateResumeData({ title });
+            markAsUnsaved(resumeId);
+          }}
           onPublicChange={isPublic => {
             updateResumeData({
               isPublic,
               visibility: isPublic ? "public" : "private"
             });
+            markAsUnsaved(resumeId);
           }}
           onTemplateClick={() => setIsTemplateModalOpen(true)}
           onSaveClick={handleSave}
@@ -1679,6 +1788,7 @@ export default function ResumeEditor({ params }: PageProps) {
                     value={resumeData?.template || 'onyx'}
                     onChange={(e) => {
                       updateResumeData({ template: e.target.value });
+                      markAsUnsaved(resumeId);
                       toast.success(`Template changed to ${e.target.value}`);
                     }}
                   >
@@ -1704,18 +1814,21 @@ export default function ResumeEditor({ params }: PageProps) {
                             min={0}
                             max={100}
                             value={resumeData.layout?.margins?.left ?? 40}
-                            onChange={(e) => updateResumeData({
-                              layout: {
-                                ...resumeData.layout,
-                                margins: {
-                                  ...(resumeData.layout?.margins ?? {}),
-                                  top: Number(e.target.value),
-                                  bottom: Number(e.target.value),
-                                  left: Number(e.target.value),
-                                  right: Number(e.target.value)
+                            onChange={(e) => {
+                              updateResumeData({
+                                layout: {
+                                  ...resumeData.layout,
+                                  margins: {
+                                    ...(resumeData.layout?.margins ?? {}),
+                                    top: Number(e.target.value),
+                                    bottom: Number(e.target.value),
+                                    left: Number(e.target.value),
+                                    right: Number(e.target.value)
+                                  }
                                 }
-                              }
-                            })}
+                              });
+                              markAsUnsaved(resumeId);
+                            }}
                             className="w-16 h-8"
                           />
                           <span className="text-sm text-muted-foreground">px</span>
@@ -1728,15 +1841,18 @@ export default function ResumeEditor({ params }: PageProps) {
                             max={2}
                             step={0.1}
                             value={resumeData.layout?.spacing?.lineHeight ?? 1.5}
-                            onChange={(e) => updateResumeData({
-                              layout: {
-                                ...resumeData.layout,
-                                spacing: {
-                                  ...(resumeData.layout?.spacing ?? {}),
-                                  lineHeight: Number(e.target.value)
+                            onChange={(e) => {
+                              updateResumeData({
+                                layout: {
+                                  ...resumeData.layout,
+                                  spacing: {
+                                    ...(resumeData.layout?.spacing ?? {}),
+                                    lineHeight: Number(e.target.value)
+                                  }
                                 }
-                              }
-                            })}
+                              });
+                              markAsUnsaved(resumeId);
+                            }}
                             className="w-16 h-8"
                           />
                           <span className="text-sm text-muted-foreground">×</span>
@@ -1749,12 +1865,15 @@ export default function ResumeEditor({ params }: PageProps) {
                             max={1.5}
                             step={0.1}
                             value={resumeData.layout?.scale ?? 1}
-                            onChange={(e) => updateResumeData({
-                              layout: {
-                                ...resumeData.layout,
-                                scale: Number(e.target.value)
-                              }
-                            })}
+                            onChange={(e) => {
+                              updateResumeData({
+                                layout: {
+                                  ...resumeData.layout,
+                                  scale: Number(e.target.value)
+                                }
+                              });
+                              markAsUnsaved(resumeId);
+                            }}
                             className="w-16 h-8"
                           />
                           <span className="text-sm text-muted-foreground">×</span>
@@ -1808,6 +1927,7 @@ export default function ResumeEditor({ params }: PageProps) {
           currentTemplate={resumeData.template}
           onSelectTemplate={(template) => {
             updateResumeData({ template });
+            markAsUnsaved(resumeId);
             setIsTemplateModalOpen(false);
           }}
         />

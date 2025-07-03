@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ResumePreview } from "@/components/resume-preview";
 import { ResumeData } from "@/types/resume";
 
