@@ -51,7 +51,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import type { editor } from 'monaco-editor'
+import type { editor as MonacoEditorType } from 'monaco-editor'
 import { getTemplateDefaultLayout } from '@/components/templates'
 import { getResumeById } from '@/data/resume'
 import { AIPanel } from '@/components/ai-panel'
@@ -64,7 +64,7 @@ import { useRequireAuth } from '@/hooks/use-require-auth'
 const MonacoEditor = dynamic(
   () => import('@monaco-editor/react').then(mod => mod.Editor),
   { ssr: false }
-)
+);
 
 // Replace DraggableSection import with dynamic import
 const DraggableSection = dynamic(() => import('./DraggableSection').then(mod => mod.default), { ssr: false });
@@ -398,7 +398,7 @@ export default function ResumeEditor({ params }: PageProps) {
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [jsonEditorValue, setJsonEditorValue] = useState('');
 
-  const debouncedUpdateResume = (value: string) => {
+  const debouncedUpdateResume = (value: string | undefined) => {
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
@@ -469,14 +469,10 @@ export default function ResumeEditor({ params }: PageProps) {
 
   // Handle applying enhanced resume from AI
   const handleApplyEnhancedResume = (enhancedResume: ResumeData) => {
-    console.log('[Editor] Received enhanced resume to apply:', enhancedResume);
-    console.log('[Editor] Current resume data:', resumeData);
-    
     if (!enhancedResume || !resumeData) return;
     
     // Restore IDs from original data to maintain consistency
     const safeEnhancedResume = restoreIdsFromOriginal(resumeData, enhancedResume);
-    console.log('[Editor] Safe enhanced resume after ID restoration:', safeEnhancedResume);
     
     // Update the resume data
     setResumeData(safeEnhancedResume);
@@ -504,7 +500,6 @@ export default function ResumeEditor({ params }: PageProps) {
       ? `Enhanced: ${enhancements.join(", ")}`
       : "Enhanced resume applied!";
     
-    console.log('[Editor] Applied enhancements:', { enhancements, enhancementText });
     toast.success(`${enhancementText} Review the changes in JSON mode.`);
   };
 
@@ -1496,7 +1491,7 @@ export default function ResumeEditor({ params }: PageProps) {
   };
 
   // Update the Monaco editor onMount handler
-  const handleEditorMount = (editor: editor.IStandaloneCodeEditor) => {
+  const handleEditorMount = (editor: MonacoEditorType.IStandaloneCodeEditor) => {
     // Add Ctrl+S handler
     editor.addCommand(
       // Use numbers instead of KeyMod/KeyCode since we can't import monaco directly
@@ -1648,6 +1643,7 @@ export default function ResumeEditor({ params }: PageProps) {
                               onClick={() => handlePageChange(currentPage - 1)}
                               isActive={currentPage > 1}
                               className="cursor-pointer"
+                              size="default"
                             />
                           </PaginationItem>
                           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -1656,6 +1652,7 @@ export default function ResumeEditor({ params }: PageProps) {
                                 onClick={() => handlePageChange(page)}
                                 isActive={currentPage === page}
                                 className="cursor-pointer"
+                                size="default"
                               >
                                 {page}
                               </PaginationLink>
@@ -1666,6 +1663,7 @@ export default function ResumeEditor({ params }: PageProps) {
                               onClick={() => handlePageChange(currentPage + 1)}
                               isActive={currentPage < totalPages}
                               className="cursor-pointer"
+                              size="default"
                             />
                           </PaginationItem>
                         </PaginationContent>

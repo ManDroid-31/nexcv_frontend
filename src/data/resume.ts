@@ -94,13 +94,13 @@ export const createResume = async (data: Partial<ResumeData>, userId?: string): 
   };
 
   // Log payload for debugging
-  if (typeof window !== "undefined") {
-    // Client-side
-    console.log("[createResume] Payload to backend:", payload);
-  } else {
-    // Server-side
-    console.log("[createResume] Payload to backend:", JSON.stringify(payload, null, 2));
-  }
+  // if (typeof window !== "undefined") {
+  //   // Client-side
+  //   console.log("[createResume] Payload to backend:", payload);
+  // } else {
+  //   // Server-side
+  //   console.log("[createResume] Payload to backend:", JSON.stringify(payload, null, 2));
+  // }
 
   const res = await fetch(BASE_URL, {
     method: 'POST',

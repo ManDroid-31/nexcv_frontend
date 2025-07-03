@@ -44,7 +44,6 @@ export default function DashboardClient() {
   useEffect(() => {
     setMounted(true);
     if (user?.id && !resumeStore.isLoading && hasFetched.current !== user.id) {
-      console.log('[Dashboard] Fetching resumes for user:', user.id);
       resumeStore.listResumes(user.id);
       hasFetched.current = user.id;
     }
@@ -158,7 +157,7 @@ export default function DashboardClient() {
       refreshResumes();
       toast.success('Resume created!');
       router.push(`/editor/${newResume?.id}`);
-      window.dispatchEvent(new Event('refresh-credits'));
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('refresh-credits'));
     } catch {
       toast.error('Failed to create resume');
     } finally {
@@ -194,7 +193,7 @@ export default function DashboardClient() {
       setShowLinkedInModal(false);
       setLinkedInUrl('');
       router.push(`/editor/${importedResume.id}`);
-      window.dispatchEvent(new Event('refresh-credits'));
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('refresh-credits'));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to import LinkedIn profile';
       toast.error(errorMessage);
@@ -213,7 +212,7 @@ export default function DashboardClient() {
       await resumeStore.deleteResume(resumeId, user?.id);
       refreshResumes();
       toast.success('Resume deleted successfully');
-      window.dispatchEvent(new Event('refresh-credits'));
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('refresh-credits'));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete resume';
       toast.error(errorMessage);
