@@ -2,7 +2,7 @@
 
 import { useUser } from '@clerk/nextjs';
 import { Plus, Linkedin, Eye, Download, Edit3, Trash2, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { ResumeData } from '@/types/resume';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -38,14 +38,17 @@ export default function DashboardClient() {
   const isLoading = resumeStore.isLoading;
   const { isDraft } = resumeStore;
   const { requireAuth } = useRequireAuth();
+  const hasFetched = useRef<string | null>(null);
 
   // Always fetch resumes on mount and when a resume is created/deleted
   useEffect(() => {
     setMounted(true);
-    if (user?.id) {
+    if (user?.id && !resumeStore.isLoading && hasFetched.current !== user.id) {
+      console.log('[Dashboard] Fetching resumes for user:', user.id);
       resumeStore.listResumes(user.id);
+      hasFetched.current = user.id;
     }
-  }, [user?.id, resumeStore]);
+  }, [user?.id]);
 
   // Refetch resumes after create/delete
   const refreshResumes = () => {
