@@ -228,6 +228,7 @@ function SortableDraggableSection({ id, title, children, onTitleChange, isDraggi
 export default function ResumeEditor({ params }: PageProps) {
   const { user } = useUser();
   const { requireAuth } = useRequireAuth();
+  
 
   // All hooks must be called before any return
   const resolvedParams = React.use(params);
