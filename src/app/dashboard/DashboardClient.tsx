@@ -47,7 +47,7 @@ export default function DashboardClient() {
       resumeStore.listResumes(user.id);
       hasFetched.current = user.id;
     }
-  }, [user?.id]);
+  }, [user?.id, resumeStore]);
 
   // Refetch resumes after create/delete
   const refreshResumes = () => {
