@@ -11,6 +11,7 @@ import { useResumeStore } from '@/stores/resume-store';
 import { toast } from 'sonner';
 import { fetchLinkedInResume } from '@/data/resume';
 import { AppNavbar } from '@/components/AppNavbar';
+import { useRequireAuth } from '@/hooks/use-require-auth';
 
 // Client-side only date formatter to prevent hydration mismatch
 const formatDate = (dateString: string | undefined) => {
@@ -36,6 +37,7 @@ export default function DashboardClient() {
   const resumes = resumeStore.resumes || [];
   const isLoading = resumeStore.isLoading;
   const { isDraft } = resumeStore;
+  const { requireAuth } = useRequireAuth();
 
   // Always fetch resumes on mount and when a resume is created/deleted
   useEffect(() => {
@@ -53,6 +55,7 @@ export default function DashboardClient() {
   };
 
   const handleCreateResume = async () => {
+    if (!requireAuth()) return;
     setCreating(true);
     try {
       // Dummy data for a software engineer resume
@@ -161,6 +164,7 @@ export default function DashboardClient() {
   };
 
   const handleLinkedInImport = async () => {
+    if (!requireAuth()) return;
     if (!linkedInUrl.trim()) {
       toast.error('Please enter a LinkedIn URL');
       return;
@@ -197,6 +201,7 @@ export default function DashboardClient() {
   };
 
   const handleDeleteResume = async (resumeId: string, resumeTitle: string) => {
+    if (!requireAuth()) return;
     if (!confirm(`Are you sure you want to delete "${resumeTitle}"? This action cannot be undone.`)) {
       return;
     }

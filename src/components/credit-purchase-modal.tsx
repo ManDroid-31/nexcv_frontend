@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, Sparkles, Zap, Crown, CheckCircle, X } from "lucide-react";
 import { toast } from "sonner";
+import { useRequireAuth } from '@/hooks/use-require-auth';
 
 interface CreditPurchaseModalProps {
   trigger?: React.ReactNode;
@@ -37,6 +38,7 @@ export function CreditPurchaseModal({ trigger, onSuccess }: CreditPurchaseModalP
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const [spinner, setSpinner] = useState(false);
+  const { requireAuth } = useRequireAuth();
 
   // Find the most popular plan (e.g., 50 credits)
   const mostPopular = pricing?.packages?.find((pkg: CreditPackage) => pkg.credits === 50);
@@ -69,6 +71,7 @@ export function CreditPurchaseModal({ trigger, onSuccess }: CreditPurchaseModalP
   }, [open]);
 
   const handleBuy = async (credits: number) => {
+    if (!requireAuth()) return;
     setBuying(credits);
     setSpinner(true);
     setErrorMsg(null);

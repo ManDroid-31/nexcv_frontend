@@ -58,6 +58,7 @@ import { AIPanel } from '@/components/ai-panel'
 import { ResumeData, CustomSection, CustomSectionValue, KeyValuePair, ArrayObjectItem, Layout } from '@/types/resume'
 import { useResumeStore } from '@/stores/resume-store'
 import { AppNavbar } from '@/components/AppNavbar'
+import { useRequireAuth } from '@/hooks/use-require-auth'
 
 // Dynamically import Monaco Editor with no SSR
 const MonacoEditor = dynamic(
@@ -226,6 +227,7 @@ function SortableDraggableSection({ id, title, children, onTitleChange, isDraggi
 // main function and last 
 export default function ResumeEditor({ params }: PageProps) {
   const { user } = useUser();
+  const { requireAuth } = useRequireAuth();
 
   // All hooks must be called before any return
   const resolvedParams = React.use(params);
@@ -439,6 +441,7 @@ export default function ResumeEditor({ params }: PageProps) {
   }, []);
 
   const handleSave = async () => {
+    if (!requireAuth()) return;
     if (!resumeData || !userId) return;
     setSaving(true);
     try {

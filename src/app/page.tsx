@@ -28,7 +28,9 @@ import {
   Crown,
   User,
   ShieldCheck,
-  CloudLightning
+  CloudLightning,
+  LogIn,
+  UserPlus
 } from "lucide-react"
 import Link from "next/link"
 import { AuthProvider } from "@/components/mock-auth"
@@ -37,6 +39,7 @@ import { SignInButton, SignUpButton, UserButton, SignedIn, SignedOut } from '@cl
 import { CreditPurchaseModal } from '@/components/credit-purchase-modal'
 import { useToast } from '@/hooks/use-toast'
 import Image from 'next/image'
+import { useRequireAuth } from '@/hooks/use-require-auth'
 
 export default function LandingPage() {
   const scrollToSection = (sectionId: string) => {
@@ -47,6 +50,7 @@ export default function LandingPage() {
   }
 
   const toast = useToast();
+  const { requireAuth } = useRequireAuth();
 
   return (
     <AuthProvider>
@@ -95,10 +99,16 @@ export default function LandingPage() {
                 <div className="flex gap-4 items-center">
               <SignedOut>
                     <SignUpButton mode="modal">
-                      <button className="btn btn-primary cursor-pointer">Sign Up</button>
+                      <button className="bg-gradient-to-r from-blue-600 to-sky-400 text-white font-bold px-6 py-3 rounded-lg shadow-lg hover:scale-105 transition-transform flex items-center gap-2 text-base">
+                        <UserPlus className="w-5 h-5" />
+                        Sign Up
+                      </button>
                     </SignUpButton>
                 <SignInButton mode="modal">
-                      <button className="btn btn-secondary cursor-pointer">Log In</button>
+                      <button className="bg-gradient-to-r from-purple-600 to-indigo-400 text-white font-bold px-6 py-3 rounded-lg shadow-lg hover:scale-105 transition-transform flex items-center gap-2 text-base">
+                        <LogIn className="w-5 h-5" />
+                        Log In
+                      </button>
                 </SignInButton>
               </SignedOut>
               <SignedIn>
@@ -120,7 +130,7 @@ export default function LandingPage() {
               NexCV is your all-in-one AI-powered resume builder. Effortlessly create, enhance, and export beautiful resumes. Unlock premium templates, LinkedIn import, and smart AI suggestions.
             </p>
             <div className="flex gap-4 mt-2">
-              <Button size="lg" className="text-lg px-8 py-4 shadow-lg" onClick={() => window.location.href = '/dashboard'}>
+              <Button size="lg" className="text-lg px-8 py-4 shadow-lg" onClick={() => requireAuth(() => window.location.href = '/dashboard')}>
                 Get Started <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
               <Button variant="outline" size="lg" className="text-lg px-8 py-4 shadow-lg" onClick={() => window.location.href = '#features'}>
@@ -147,7 +157,7 @@ export default function LandingPage() {
                 </div>
                 <h3 className="font-bold text-2xl mb-2 text-blue-800 dark:text-blue-200">Import from LinkedIn</h3>
                 <p className="text-muted-foreground mb-4">Save time by importing your LinkedIn profile in one click. Instantly create a resume with your latest experience and skills.</p>
-                <Button size="lg" className="bg-blue-600 text-white font-bold px-8 py-3 shadow-lg hover:bg-blue-700 transition-colors" onClick={() => window.location.href = '/dashboard'}>
+                <Button size="lg" className="bg-blue-600 text-white font-bold px-8 py-3 shadow-lg hover:bg-blue-700 transition-colors" onClick={() => requireAuth(() => window.location.href = '/dashboard')}>
                   Import Now <Linkedin className="w-5 h-5 ml-2" />
                 </Button>
                 <div className="text-xs text-blue-700 dark:text-blue-300 mt-2">Requires 7 credits</div>
@@ -220,7 +230,7 @@ export default function LandingPage() {
           <div className="bg-gradient-to-r from-blue-500 to-sky-400 rounded-2xl shadow-xl p-12 flex flex-col items-center gap-6">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Ready to Build Your Dream Resume?</h2>
             <p className="text-lg text-blue-100 mb-4">Join thousands of professionals using NexCV to land their next job. Start for free and unlock the power of AI for your career.</p>
-            <Button size="lg" className="text-lg px-10 py-4 bg-white text-blue-700 font-bold shadow-lg hover:bg-blue-50" onClick={() => window.location.href = '/dashboard'}>
+            <Button size="lg" className="text-lg px-10 py-4 bg-white text-blue-700 font-bold shadow-lg hover:bg-blue-50" onClick={() => requireAuth(() => window.location.href = '/dashboard')}>
               Get Started Now <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </div>

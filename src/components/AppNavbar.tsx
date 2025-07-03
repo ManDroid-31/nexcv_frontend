@@ -2,8 +2,8 @@
 import { CreditBalance } from "@/components/CreditBalance";
 import { CreditPurchaseModal } from "@/components/credit-purchase-modal";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { UserButton, SignedIn } from '@clerk/nextjs';
-import { CreditCard } from 'lucide-react';
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { CreditCard, LogIn, UserPlus } from 'lucide-react';
 
 export function AppNavbar() {
   return (
@@ -27,6 +27,20 @@ export function AppNavbar() {
             }}
           />
           <ThemeToggle />
+          <SignedOut>
+            <SignUpButton mode="modal">
+              <button className="bg-gradient-to-r from-blue-600 to-sky-400 text-white font-bold px-4 py-2 rounded-lg shadow-lg hover:scale-105 transition-transform flex items-center gap-2 text-base">
+                <UserPlus className="w-5 h-5" />
+                Sign Up
+              </button>
+            </SignUpButton>
+            <SignInButton mode="modal">
+              <button className="bg-gradient-to-r from-purple-600 to-indigo-400 text-white font-bold px-4 py-2 rounded-lg shadow-lg hover:scale-105 transition-transform flex items-center gap-2 text-base">
+                <LogIn className="w-5 h-5" />
+                Log In
+              </button>
+            </SignInButton>
+          </SignedOut>
           <SignedIn>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
