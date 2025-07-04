@@ -398,23 +398,37 @@ export default function ResumeEditor({ params }: PageProps) {
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [jsonEditorValue, setJsonEditorValue] = useState('');
 
+  // Add this function to sync isPublic and visibility
+  function syncPublicFields(data: ResumeData): ResumeData {
+    let isPublic = data.isPublic;
+    let visibility = data.visibility;
+    // If only one is present, or they disagree, sync them
+    if (typeof isPublic === 'boolean') {
+      visibility = isPublic ? 'public' : 'private';
+    } else if (typeof visibility === 'string') {
+      isPublic = visibility === 'public';
+    } else {
+      // Default to private
+      isPublic = false;
+      visibility = 'private';
+    }
+    return { ...data, isPublic, visibility };
+  }
+
   const debouncedUpdateResume = (value: string | undefined) => {
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
-    
     debounceTimeoutRef.current = setTimeout(() => {
       if (value && resumeData) {
         try {
-          const parsed = JSON.parse(value);
-          // Only update if the parsed data is actually different
-          const currentString = JSON.stringify(resumeData, null, 2);
-          if (value !== currentString) {
-            // Patch: restore ids from original data
-            const safeParsed = restoreIdsFromOriginal(resumeData, parsed);
-            setResumeData(safeParsed);
-            markAsUnsaved(resumeId);
-          }
+          let parsed = JSON.parse(value);
+          // Patch: restore ids from original data
+          parsed = restoreIdsFromOriginal(resumeData, parsed);
+          // Sync public fields
+          parsed = syncPublicFields(parsed);
+          setResumeData(parsed);
+          markAsUnsaved(resumeId);
         } catch {
           // Don't update state if JSON is invalid
         }
@@ -446,16 +460,12 @@ export default function ResumeEditor({ params }: PageProps) {
     if (!resumeData || !userId) return;
     setSaving(true);
     try {
-      // Ensure both fields are set
-      const isPublic = resumeData.visibility === "public";
-      const saveData = {
-        ...resumeData,
-        isPublic,
-        visibility: isPublic ? "public" : "private"
-      };
+      // Always sync before saving
+      const saveData = syncPublicFields(resumeData);
       await saveResume(saveData, userId, resumeId);
       // Refetch the latest resume from the backend
-      const updated = await getResumeById(resumeId, userId, 'ownerview');
+      let updated = await getResumeById(resumeId, userId, 'ownerview');
+      updated = syncPublicFields(updated);
       setResumeData(updated);
       // Mark as saved after successful save
       markAsSaved(resumeId);
@@ -1520,13 +1530,14 @@ export default function ResumeEditor({ params }: PageProps) {
     );
   };
 
-  // Update the initial resume data with proper types
+  // On resume load, sync isPublic and visibility
   useEffect(() => {
     if (resumeId && userId) {
       (async () => {
         try {
           // Always use 'ownerview' for the logged-in user
-          const data = await getResumeById(resumeId, userId, 'ownerview');
+          let data = await getResumeById(resumeId, userId, 'ownerview');
+          data = syncPublicFields(data);
           setResumeData(data);
         } catch {
           setResumeData({} as ResumeData);
@@ -1577,7 +1588,7 @@ export default function ResumeEditor({ params }: PageProps) {
       <div className="min-h-screen bg-background">
         <EditorHeader
           title={resumeData.title}
-          isPublic={resumeData.visibility === "public"}
+          isPublic={resumeData.isPublic}
           onTitleChange={(title) => {
             updateResumeData({ title });
             markAsUnsaved(resumeId);

@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { fetchLinkedInResume } from '@/data/resume';
 import { AppNavbar } from '@/components/AppNavbar';
 import { useRequireAuth } from '@/hooks/use-require-auth';
+import { generateResumePDF } from '@/lib/pdf-generator';
 
 // Client-side only date formatter to prevent hydration mismatch
 const formatDate = (dateString: string | undefined) => {
@@ -28,6 +29,7 @@ export default function DashboardClient() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [showLinkedInModal, setShowLinkedInModal] = useState(false);
   const [linkedInUrl, setLinkedInUrl] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -221,6 +223,29 @@ export default function DashboardClient() {
     }
   };
 
+  const handleDownloadResume = async (resume: ResumeData) => {
+    if (!requireAuth()) return;
+    if (!resume.id) return;
+    
+    setDownloadingId(resume.id);
+    try {
+      // Generate filename
+      const fileName = `${resume.personalInfo?.name || resume.title || 'resume'}-${new Date().toISOString().split('T')[0]}.pdf`
+        .replace(/[^a-zA-Z0-9-]/g, '-')
+        .toLowerCase();
+
+      // Generate and download PDF
+      generateResumePDF(resume, fileName);
+      
+      toast.success('Resume downloaded successfully!');
+    } catch (error) {
+      console.error('Error downloading resume:', error);
+      toast.error('Failed to download resume. Please try again.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   useEffect(() => {
     if (isLoaded && !user) {
       router.push('/sign-in');
@@ -325,8 +350,20 @@ export default function DashboardClient() {
                     <button className="p-2 rounded-lg bg-muted text-primary cursor-pointer hover:bg-muted/80 shadow flex items-center gap-1" onClick={e => { e.stopPropagation(); router.push(`/resumes/${resume.id}`); }}>
                       <Eye className="w-4 h-4" /> View
                     </button>
-                    <button className="p-2 rounded-lg bg-muted text-primary cursor-pointer hover:bg-muted/80 shadow flex items-center gap-1" onClick={e => { e.stopPropagation(); /* TODO: implement download/export */ }}>
-                      <Download className="w-4 h-4" /> Download
+                    <button 
+                      className="p-2 rounded-lg bg-muted text-primary cursor-pointer hover:bg-muted/80 shadow flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed" 
+                      onClick={e => { 
+                        e.stopPropagation(); 
+                        handleDownloadResume(resume);
+                      }}
+                      disabled={downloadingId === resume.id}
+                    >
+                      {downloadingId === resume.id ? (
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )}
+                      {downloadingId === resume.id ? 'Downloading...' : 'Download'}
                     </button>
                     <button 
                       className="p-2 rounded-lg bg-red-500 text-white cursor-pointer hover:bg-red-600 shadow flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed" 
@@ -429,7 +466,7 @@ export default function DashboardClient() {
                   setShowLinkedInModal(false);
                   setLinkedInUrl('');
                 }}
-                className="px-4 py-2 border border-env.NEXT_PUBLIC_BACKEND_URLrounded-md hover:bg-muted"
+                className="px-4 py-2 border border-input rounded-md hover:bg-muted"
                 disabled={importing}
               >
                 Cancel
