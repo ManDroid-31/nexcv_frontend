@@ -13,6 +13,7 @@ import { fetchLinkedInResume } from '@/data/resume';
 import { AppNavbar } from '@/components/AppNavbar';
 import { useRequireAuth } from '@/hooks/use-require-auth';
 import { generateResumePDF } from '@/lib/pdf-generator';
+import { Button } from '@/components/ui/button';
 
 // Client-side only date formatter to prevent hydration mismatch
 const formatDate = (dateString: string | undefined) => {
@@ -275,14 +276,14 @@ export default function DashboardClient() {
           <h1 className="text-3xl md:text-4xl font-bold mb-3 text-primary">Welcome{user?.firstName ? `, ${user.firstName}` : ''}!</h1>
           <p className="text-lg text-muted-foreground mb-6 max-w-xl">Effortlessly create, manage, and export beautiful resumes powered by AI. Get started by creating a new resume or importing from LinkedIn.</p>
           <div className="flex gap-4">
-            <button
+            <Button
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-primary to-blue-600 text-white font-semibold shadow-lg hover:scale-105 transition-transform cursor-pointer"
               onClick={handleCreateResume}
               disabled={creating}
             >
               {creating ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Plus className="w-5 h-5" />} Create Resume
-            </button>
-            <button
+            </Button>
+            <Button
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-sky-400 text-white font-semibold shadow-lg hover:scale-105 transition-transform cursor-pointer relative group"
               onClick={() => setShowLinkedInModal(true)}
               disabled={importing}
@@ -294,7 +295,7 @@ export default function DashboardClient() {
               )}
               Import from LinkedIn
               <span className="ml-2 bg-white/20 text-xs px-2 py-1 rounded-full font-bold animate-pulse border border-white/30">7 credits</span>
-            </button>
+            </Button>
           </div>
         </div>
         <div className="flex-1 flex justify-center md:justify-end">
@@ -344,13 +345,13 @@ export default function DashboardClient() {
                 </div>
                 <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-20 bg-background/80 backdrop-blur-sm">
                   <div className="flex gap-3">
-                    <button className="p-2 rounded-lg bg-secondary cursor-pointer text-white hover:bg-secondary/90 shadow flex items-center gap-1" onClick={e => { e.stopPropagation(); router.push(`/editor/${resume.id}`); }}>
+                    <Button className="p-2 rounded-lg bg-secondary cursor-pointer text-white hover:bg-secondary/90 shadow flex items-center gap-1" onClick={e => { e.stopPropagation(); router.push(`/editor/${resume.id}`); toast.success('Navigated to editor!'); }}>
                       <Edit3 className="w-4 h-4" /> Edit
-                    </button>
-                    <button className="p-2 rounded-lg bg-muted text-primary cursor-pointer hover:bg-muted/80 shadow flex items-center gap-1" onClick={e => { e.stopPropagation(); router.push(`/resumes/${resume.id}`); }}>
+                    </Button>
+                    <Button className="p-2 rounded-lg bg-muted text-primary cursor-pointer hover:bg-muted/80 shadow flex items-center gap-1" onClick={e => { e.stopPropagation(); router.push(`/resumes/${resume.id}`); toast.success('Viewing public resume!'); }}>
                       <Eye className="w-4 h-4" /> View
-                    </button>
-                    <button 
+                    </Button>
+                    <Button 
                       className="p-2 rounded-lg bg-muted text-primary cursor-pointer hover:bg-muted/80 shadow flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed" 
                       onClick={e => { 
                         e.stopPropagation(); 
@@ -364,8 +365,8 @@ export default function DashboardClient() {
                         <Download className="w-4 h-4" />
                       )}
                       {downloadingId === resume.id ? 'Downloading...' : 'Download'}
-                    </button>
-                    <button 
+                    </Button>
+                    <Button 
                       className="p-2 rounded-lg bg-red-500 text-white cursor-pointer hover:bg-red-600 shadow flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed" 
                       onClick={e => { 
                         e.stopPropagation(); 
@@ -381,7 +382,7 @@ export default function DashboardClient() {
                         <Trash2 className="w-4 h-4" />
                       )}
                       {deletingId === resume.id ? 'Deleting...' : 'Delete'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -454,14 +455,14 @@ export default function DashboardClient() {
             </div>
 
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={handleLinkedInImport}
                 disabled={importing || !linkedInUrl.trim()}
                 className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {importing ? 'Importing...' : 'Import Profile'}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   setShowLinkedInModal(false);
                   setLinkedInUrl('');
@@ -470,7 +471,7 @@ export default function DashboardClient() {
                 disabled={importing}
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         </div>
