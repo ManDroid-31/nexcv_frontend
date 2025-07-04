@@ -2,15 +2,33 @@
 import { CreditBalance } from "@/components/CreditBalance";
 import { CreditPurchaseModal } from "@/components/credit-purchase-modal";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
-import { CreditCard, LogIn, UserPlus } from 'lucide-react';
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
+import { CreditCard, LogIn, UserPlus, FileText } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export function AppNavbar() {
+  const { isSignedIn } = useUser();
+  const router = useRouter();
+
+  const handleLogoClick = () => {
+    if (isSignedIn) {
+      router.push('/dashboard');
+    } else {
+      router.push('/');
+    }
+  };
+
   return (
     <nav className="sticky top-0 z-30 bg-background/80 backdrop-blur border-b shadow-sm">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3">
-          <span className="font-extrabold text-2xl tracking-tight text-primary">NexCV</span>
+          <button 
+            onClick={handleLogoClick}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+          >
+            <FileText className="w-6 h-6 text-primary" />
+            <span className="font-extrabold text-2xl tracking-tight text-primary">NexCV</span>
+          </button>
           <span className="hidden md:inline text-muted-foreground font-medium text-sm ml-2">AI Resume Builder</span>
         </div>
         <div className="flex items-center gap-4">
