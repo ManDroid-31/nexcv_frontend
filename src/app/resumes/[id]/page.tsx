@@ -13,13 +13,16 @@ export default function PublicResumePage() {
   const [resume, setResume] = useState<ResumeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     fetch(`/api/resumes/${id}?view=publicview`)
       .then(async (res) => {
-        if (!res.ok) throw new Error("Not found");
+        if (res.status === 404) throw new Error("notfound");
+        if (res.status === 403) throw new Error("private");
+        if (!res.ok) throw new Error("unknown");
         const data = await res.json();
         // Check for public visibility
         if (
@@ -33,39 +36,65 @@ export default function PublicResumePage() {
               : data
           );
         } else {
-          setNotFound(true);
+          setIsPrivate(true);
         }
       })
-      .catch(() => setNotFound(true))
+      .catch((err) => {
+        if (err.message === "notfound") setNotFound(true);
+        else if (err.message === "private") setIsPrivate(true);
+        else setNotFound(true);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
-  if (notFound || !resume)
+
+  if (notFound)
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 dark:from-background dark:to-muted/60 text-center px-4">
-        <h1 className="text-7xl font-extrabold text-blue-600 mb-4 drop-shadow-lg">404</h1>
-        <h2 className="text-2xl md:text-3xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Resume Not Found or Not Public</h2>
+        <div className="w-20 h-20 mb-6 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800">
+          <svg width="48" height="48" fill="none" viewBox="0 0 48 48">
+            <ellipse cx="24" cy="40" rx="16" ry="4" fill="#e0e7ef" />
+            <circle cx="24" cy="24" r="16" fill="#f1f5f9" />
+            <path d="M20 28c0-2 8-2 8 0" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="18" cy="22" r="2" fill="#94a3b8" />
+            <circle cx="30" cy="22" r="2" fill="#94a3b8" />
+          </svg>
+        </div>
+        <h2 className="text-2xl md:text-3xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Resume Not Found</h2>
         <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md">
-          This resume is either private or does not exist.<br />
-          If you think this is a mistake, please contact the owner or try again.
+          The resume you are looking for does not exist.<br />
+          Please check the link or contact the owner.
         </p>
         <Link href="/">
           <span className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition-colors text-lg">
             Go back home
           </span>
         </Link>
-        <div className="mt-10 opacity-60">
-          <svg width="120" height="120" fill="none" viewBox="0 0 120 120">
-            <ellipse cx="60" cy="100" rx="40" ry="10" fill="#e0e7ef" />
-            <circle cx="60" cy="60" r="40" fill="#f1f5f9" />
-            <path d="M50 70c0-5 10-5 10 0" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
-            <circle cx="48" cy="55" r="3" fill="#94a3b8" />
-            <circle cx="72" cy="55" r="3" fill="#94a3b8" />
-          </svg>
-        </div>
       </div>
     );
+
+  if (isPrivate)
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 dark:from-background dark:to-muted/60 text-center px-4">
+        <div className="w-20 h-20 mb-6 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+          <Lock className="w-12 h-12 text-red-600" />
+        </div>
+        <h2 className="text-2xl md:text-3xl font-semibold text-red-700 dark:text-red-300 mb-4">This Resume is Private</h2>
+        <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md">
+          The owner of this resume has set it to private.<br />
+          Only the owner can view this resume.
+        </p>
+        <Link href="/">
+          <span className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition-colors text-lg">
+            Go back home
+          </span>
+        </Link>
+      </div>
+    );
+
+  if (!resume)
+    return null;
 
   // Determine public/private status for badge
   const isPublic = resume.visibility === "public" || resume.isPublic === true;
