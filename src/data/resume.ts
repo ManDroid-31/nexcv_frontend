@@ -1,6 +1,6 @@
 // backend api call too return crud operations result 
 
-import { ResumeData } from '@/types/resume';
+import { ResumeData, ArrayObjectItem } from '@/types/resume';
 
 // Use relative URLs for all resume requests (proxy through Next.js API)
 const BASE_URL = '/api/resumes';
@@ -35,6 +35,131 @@ const transformBackendResponse = (backendResume: Record<string, unknown>): Resum
     status: backendResume.status as string || 'Draft',
     views: backendResume.views as number || 0,
     updatedAt: backendResume.updatedAt as string
+  };
+};
+
+// Specialized transformation for LinkedIn data
+const transformLinkedInData = (linkedInData: Record<string, unknown>): ResumeData => {
+  // Extract the actual resume data from the LinkedIn response
+  const resumeData = linkedInData.data as Record<string, unknown> || linkedInData;
+  
+  // Transform layout spacing if it's a number
+  let layout = resumeData.layout as ResumeData['layout'] || {
+    margins: { top: 20, bottom: 20, left: 20, right: 20 },
+    spacing: { sectionGap: 24, paragraphGap: 12, lineHeight: 1.5 },
+    scale: 1
+  };
+  
+  if (typeof layout.spacing === 'number') {
+    layout = {
+      ...layout,
+      spacing: { sectionGap: 24, paragraphGap: 12, lineHeight: layout.spacing }
+    };
+  }
+
+  // Transform education entries
+  const education = ((resumeData.education as Record<string, unknown>[]) || []).map((edu, index) => ({
+    id: edu.id as string || `edu-${index + 1}`,
+    school: (edu.school as string) || (edu.institution as string) || '',
+    degree: edu.degree as string || '',
+    startDate: edu.startDate as string || '',
+    endDate: edu.endDate as string || '',
+    gpa: edu.gpa as string || '',
+    tags: edu.tags as string[] || []
+  }));
+
+  // Transform experience entries
+  const experience = ((resumeData.experience as Record<string, unknown>[]) || []).map((exp, index) => ({
+    id: exp.id as string || `exp-${index + 1}`,
+    company: exp.company as string || '',
+    position: exp.position as string || '',
+    startDate: exp.startDate as string || '',
+    endDate: exp.endDate as string || '',
+    description: (exp.description as string) || ((exp.achievements as string[])?.join('\n')) || '',
+    tags: exp.tags as string[] || []
+  }));
+
+  // Transform projects entries
+  const projects = ((resumeData.projects as Record<string, unknown>[]) || []).map((proj, index) => ({
+    id: proj.id as string || `proj-${index + 1}`,
+    name: proj.name as string || '',
+    description: proj.description as string || '',
+    technologies: proj.technologies as string[] || [],
+    liveUrl: (proj.liveUrl as string) || (proj.url as string) || '',
+    githubUrl: proj.githubUrl as string || '',
+    startDate: proj.startDate as string || '',
+    endDate: proj.endDate as string || '',
+    tags: proj.tags as string[] || []
+  }));
+
+  // Transform custom sections
+  const customSections = ((resumeData.customSections as Record<string, unknown>[]) || []).map((section, index) => {
+    // Handle different custom section structures
+    const transformedSection = {
+      id: section.id as string || `custom-${index + 1}`,
+      name: (section.title as string) || (section.name as string) || '',
+      type: 'array-object' as const,
+      value: [] as ArrayObjectItem[]
+    };
+
+    // Handle certifications
+    if (section.title === 'Certifications' && (section.content as Record<string, unknown>)?.items) {
+      transformedSection.value = ((section.content as Record<string, unknown>).items as Record<string, unknown>[]).map((item) => ({
+        id: `cert-${Math.random().toString(36).substr(2, 9)}`,
+        title: (item.name as string) || '',
+        description: '',
+        date: item.date as string || ''
+      }));
+    }
+    // Handle volunteer work
+    else if (section.title === 'Volunteer Work' && (section.content as Record<string, unknown>)?.items) {
+      transformedSection.value = ((section.content as Record<string, unknown>).items as Record<string, unknown>[]).map((item) => ({
+        id: `vol-${Math.random().toString(36).substr(2, 9)}`,
+        title: item.title as string || '',
+        description: item.description as string || '',
+        date: (item.starts_at as Record<string, unknown>) ? `${(item.starts_at as Record<string, unknown>).year}-${(item.starts_at as Record<string, unknown>).month}-${(item.starts_at as Record<string, unknown>).day}` : ''
+      }));
+    }
+    // Handle other custom sections
+    else if ((section.content as Record<string, unknown>)?.items) {
+      transformedSection.value = ((section.content as Record<string, unknown>).items as Record<string, unknown>[]).map((item) => ({
+        id: `item-${Math.random().toString(36).substr(2, 9)}`,
+        title: (item.name as string) || (item.title as string) || '',
+        description: (item.description as string) || (item.summary as string) || '',
+        date: item.date as string || ''
+      }));
+    }
+
+    return transformedSection;
+  });
+
+  return {
+    id: linkedInData.id as string,
+    title: linkedInData.title as string || 'Imported Resume',
+    slug: linkedInData.slug as string || 'imported-resume',
+    isPublic: linkedInData.isPublic as boolean || false,
+    template: linkedInData.template as string || 'pikachu',
+    tags: (linkedInData.tags as string[]) || [],
+    layout,
+    personalInfo: {
+      name: ((resumeData.personalInfo as Record<string, unknown>)?.name as string) || '',
+      email: ((resumeData.personalInfo as Record<string, unknown>)?.email as string) || '',
+      phone: ((resumeData.personalInfo as Record<string, unknown>)?.phone as string) || '',
+      location: ((resumeData.personalInfo as Record<string, unknown>)?.location as string) || '',
+      website: ((resumeData.personalInfo as Record<string, unknown>)?.website as string) || '',
+      linkedin: ((resumeData.personalInfo as Record<string, unknown>)?.linkedin as string) || '',
+      github: ((resumeData.personalInfo as Record<string, unknown>)?.github as string) || ''
+    },
+    summary: resumeData.summary as string || '',
+    experience,
+    education,
+    projects,
+    skills: (resumeData.skills as string[]) || [],
+    customSections,
+    sectionOrder: (resumeData.sectionOrder as string[]) || ['personalInfo', 'summary', 'experience', 'education', 'skills', 'projects', 'customSections'],
+    status: linkedInData.status as string || 'Draft',
+    views: linkedInData.views as number || 0,
+    updatedAt: linkedInData.updatedAt as string
   };
 };
 
@@ -151,7 +276,7 @@ export const fetchLinkedInResume = async (linkedInData: Record<string, unknown>,
   if (res.status === 502) throw new Error('Failed to fetch from LinkedIn');
   if (!res.ok) throw new Error('Failed to fetch LinkedIn resume');
   const backendResume = await res.json();
-  return transformBackendResponse(backendResume.resume || backendResume);
+  return transformLinkedInData(backendResume.resume || backendResume);
 };
 
 export const defaultResumeData = {
