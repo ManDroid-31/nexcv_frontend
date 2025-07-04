@@ -39,7 +39,7 @@ export function ExportModal({ isOpen, onClose, resumeData }: ExportModalProps) {
       // Generate and download PDF
       generateResumePDF(resumeData, fileName)
       
-      toast.success('Resume downloaded successfully!')
+      toast.success('PDF downloaded successfully! This is a standard PDF file and safe to open.')
     } catch (error) {
       console.error('Error generating PDF:', error)
       toast.error('Failed to generate PDF. Please try again.')
@@ -60,13 +60,16 @@ export function ExportModal({ isOpen, onClose, resumeData }: ExportModalProps) {
       
       const link = document.createElement('a')
       link.href = url
-      link.download = fileName
+      link.download = fileName.endsWith('.json') ? fileName : `${fileName}.json`
+      link.type = 'application/json'
       document.body.appendChild(link)
       link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      setTimeout(() => {
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      }, 100)
       
-      toast.success('JSON file downloaded successfully!')
+      toast.success('JSON downloaded successfully! This is a standard .json file and safe to use.')
     } catch (error) {
       console.error('Error downloading JSON:', error)
       toast.error('Failed to download JSON file.')
@@ -121,6 +124,9 @@ export function ExportModal({ isOpen, onClose, resumeData }: ExportModalProps) {
                   <p className="text-muted-foreground text-sm">
                     Download your resume as a high-quality PDF file, perfect for job applications.
                   </p>
+                  <p className="text-xs text-green-700 dark:text-green-300">
+                    This is a standard PDF file. It is safe to open and share.
+                  </p>
                   <Button 
                     onClick={handleDownloadPDF} 
                     disabled={isExporting} 
@@ -151,6 +157,9 @@ export function ExportModal({ isOpen, onClose, resumeData }: ExportModalProps) {
                 <CardContent className="space-y-4">
                   <p className="text-muted-foreground text-sm">
                     Download your resume data as JSON for backup or importing into other tools.
+                  </p>
+                  <p className="text-xs text-green-700 dark:text-green-300">
+                    This is a standard .json file. It is safe to use and import.
                   </p>
                   <Button 
                     onClick={handleDownloadJSON} 

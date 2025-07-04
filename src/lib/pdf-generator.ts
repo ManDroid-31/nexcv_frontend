@@ -87,6 +87,11 @@ export class PDFGenerator {
 
     // Add content
     content.forEach(line => {
+      // Ensure line is a string before calling trim
+      if (typeof line !== 'string') {
+        if (line == null) return;
+        line = String(line);
+      }
       if (line.trim()) {
         const lineHeight = this.addBodyText(line, x + 5, this.currentY)
         this.currentY += lineHeight + 2
