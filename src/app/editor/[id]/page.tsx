@@ -1016,7 +1016,7 @@ export default function ResumeEditor({ params }: PageProps) {
                           <Label>Start Date (optional)</Label>
                           <Input
                             type="month"
-                            value={item.startDate || ''}
+                            value={item.startDate ? item.startDate.slice(0, 7) : ''}
                             onChange={(e) => {
                               const newValue = [...value];
                               newValue[itemIndex] = { ...item, startDate: e.target.value };
@@ -1028,7 +1028,7 @@ export default function ResumeEditor({ params }: PageProps) {
                           <Label>End Date (optional)</Label>
                           <Input
                             type="month"
-                            value={item.endDate || ''}
+                            value={item.endDate ? item.endDate.slice(0, 7) : ''}
                             onChange={(e) => {
                               const newValue = [...value];
                               newValue[itemIndex] = { ...item, endDate: e.target.value };
