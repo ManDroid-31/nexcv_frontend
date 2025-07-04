@@ -24,9 +24,12 @@ export function AppNavbar() {
         <div className="flex items-center gap-3">
           <button 
             onClick={handleLogoClick}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer group"
           >
-            <FileText className="w-6 h-6 text-primary" />
+            <div className="relative">
+              <FileText className="w-7 h-7 text-primary group-hover:scale-110 transition-transform" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full opacity-80"></div>
+            </div>
             <span className="font-extrabold text-2xl tracking-tight text-primary">NexCV</span>
           </button>
           <span className="hidden md:inline text-muted-foreground font-medium text-sm ml-2">AI Resume Builder</span>

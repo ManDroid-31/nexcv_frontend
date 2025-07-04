@@ -15,6 +15,11 @@ export const metadata: Metadata = {
   title: "NexCV - Modern AI Resume Builder",
   description: "Create beautiful resumes with AI-powered enhancements",
   generator: "v0.dev",
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

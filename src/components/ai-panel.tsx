@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useRef, useLayoutEffect, useMemo } from "react"
-import { Send, Sparkles, Bot, ChevronUp, ChevronDown, CheckCircle, ArrowRight } from "lucide-react"
+import { Send, Sparkles, Bot, ChevronUp, ChevronDown, CheckCircle, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -23,6 +23,8 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
   const [isHovered, setIsHovered] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   const [input, setInput] = useState('')
+  const [isEnhancing, setIsEnhancing] = useState(false)
+  const [isChatting, setIsChatting] = useState(false)
   const { user } = useUser();
   const userId = user?.id
   const resumeData = useResumeStore(state => state.resumeData); 
@@ -85,6 +87,8 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
   const handleSend = async (): Promise<void> => {
     console.log("sending message to ai")
     if (!input.trim() || !resumeData) return;
+    
+    setIsChatting(true);
     try {
       await sendMessage({ message: input, userId, resume: resumeData });
       setInput('');
@@ -95,6 +99,8 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
         toast.error('Not enough credits. Please purchase more to use AI features.');
         await fetchBalance(true);
       }
+    } finally {
+      setIsChatting(false);
     }
   };
 
@@ -103,6 +109,8 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
       toast.error('No resume data available to enhance');
       return;
     }
+    
+    setIsEnhancing(true);
     try {
       await enhanceResume({ resume: resumeData, userId });
       await fetchBalance(true); // Refresh credits after AI call
@@ -112,6 +120,8 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
         toast.error('Not enough credits. Please purchase more to use AI features.');
         await fetchBalance(true);
       }
+    } finally {
+      setIsEnhancing(false);
     }
   };
 
@@ -183,9 +193,14 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
         {/* Header with drag handle and maximize button */}
         <div className="relative w-full h-16 flex items-center justify-between px-6 bg-gradient-to-r from-background/80 to-muted/20 border-b border-border/30">
           <div className="flex items-center gap-3">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`} />
             <span className="text-sm font-semibold text-foreground">AI Assistant</span>
-            {/* You can add more badges/info here */}
+            {isLoading && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Processing...</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
@@ -207,12 +222,33 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
           <div className="p-6 space-y-6">
             {/* AI Header CTA */}
             <div className="space-y-3">
-              <Button className="w-full h-12 text-base font-semibold rounded-xl bg-gradient-to-r from-primary to-primary/90 text-primary-foreground hover:from-primary/90 hover:to-primary/80 shadow-lg hover:shadow-xl transition-all duration-300 group" onClick={handleEnhance} disabled={isLoading}>
-                <Sparkles className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform duration-300" />
-                Improve Entire Resume with AI
+              <Button 
+                className="w-full h-12 text-base font-semibold rounded-xl bg-gradient-to-r from-primary to-primary/90 text-primary-foreground hover:from-primary/90 hover:to-primary/80 shadow-lg hover:shadow-xl transition-all duration-300 group relative overflow-hidden" 
+                onClick={handleEnhance} 
+                disabled={isEnhancing || isLoading}
+              >
+                {isEnhancing && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/10 animate-pulse" />
+                )}
+                <div className="relative flex items-center justify-center">
+                  {isEnhancing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      <span>Enhancing Resume...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform duration-300" />
+                      <span>Improve Entire Resume with AI</span>
+                    </>
+                  )}
+                </div>
               </Button>
               <p className="text-sm text-muted-foreground text-center leading-relaxed">
-                Let our AI analyze and enhance your entire resume for maximum impact
+                {isEnhancing 
+                  ? "AI is analyzing and enhancing your resume content..." 
+                  : "Let our AI analyze and enhance your entire resume for maximum impact"
+                }
               </p>
             </div>
 
@@ -259,8 +295,14 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
             {/* Chat Interface */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <div className={`w-2 h-2 rounded-full ${isChatting ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`} />
                 <span className="text-sm font-semibold text-foreground">Chat with AI Assistant</span>
+                {isChatting && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Thinking...</span>
+                  </div>
+                )}
               </div>
               {/* Chat Messages */}
               <div 
@@ -322,6 +364,25 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
                     </div>
                   </div>
                 ))}
+                
+                {/* Loading message for chat */}
+                {isChatting && (
+                  <div className="flex justify-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Bot className="w-3 h-3 text-primary" />
+                    </div>
+                    <div className="px-3 py-2 rounded-lg text-sm bg-muted/50 text-muted-foreground rounded-tl-none">
+                      <div className="flex items-center gap-2">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                        <span className="text-xs text-muted-foreground">AI is thinking...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               {/* Chat Input */}
               <form
@@ -336,17 +397,18 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     className="h-10 text-sm border-border/50 focus:border-primary/50 bg-background/50 backdrop-blur-sm rounded-lg"
-                    placeholder="Ask me anything about your resume..."
+                    placeholder={isChatting ? "AI is processing your message..." : "Ask me anything about your resume..."}
+                    disabled={isChatting}
                   />
                 </div>
                 <Button
                   type="submit"
-                  disabled={isLoading || !input.trim()}
+                  disabled={isChatting || !input.trim()}
                   size="sm"
                   className="h-10 px-4 bg-primary hover:bg-primary/90 shadow-sm hover:shadow-md transition-all duration-200 rounded-lg shrink-0"
                 >
-                  {isLoading ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  {isChatting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Send className="w-4 h-4" />
                   )}
