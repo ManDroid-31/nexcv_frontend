@@ -17,7 +17,7 @@ export default function PublicResumePage() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    fetch(`/api/resumes/${id}`)
+    fetch(`/api/resumes/${id}?view=publicview`)
       .then(async (res) => {
         if (!res.ok) throw new Error("Not found");
         const data = await res.json();
