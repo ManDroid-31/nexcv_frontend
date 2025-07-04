@@ -22,7 +22,8 @@ interface ExportModalProps {
 
 export function ExportModal({ isOpen, onClose, resumeData }: ExportModalProps) {
   const [isExporting, setIsExporting] = useState(false)
-  const [shareUrl] = useState(`https://nexcv.app/resumes/${resumeData.id}`)
+  const [shareUrl] = useState(`https://nexcv.vercel.app/resumes/${resumeData.id}?view=publicview`)
+  const [publicApiUrl] = useState(`https://nexcv.vercel.app/resumes/${resumeData.id}?view=publicview`)
 
   const handleDownloadPDF = async () => {
     setIsExporting(true)
@@ -217,8 +218,18 @@ export function ExportModal({ isOpen, onClose, resumeData }: ExportModalProps) {
                   </div>
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="public-api-url">Export/Preview Public Resume (PDF/JSON)</Label>
+                  <div className="flex space-x-2">
+                    <Input id="public-api-url" value={publicApiUrl} readOnly className="flex-1" />
+                    <Button variant="outline" onClick={() => copyToClipboard(publicApiUrl)}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="flex space-x-2">
-                  <Button variant="outline" className="flex-1" onClick={() => window.open(shareUrl, "_blank")}>
+                  <Button variant="outline" className="flex-1" onClick={() => window.open(shareUrl, "_blank")}> 
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Preview
                   </Button>
