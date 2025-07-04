@@ -5,13 +5,23 @@ import { getTemplate } from "./templates";
 import { Onyx } from "./templates/onyx";
 import type { ResumeData } from "@/types/resume";
 
-// Industry standard A4 dimensions and spacing
+// A4 dimensions in px (at 96dpi)
 const A4_WIDTH = 794;
 const A4_HEIGHT = 1123;
 const PAGE_MARGIN = 40;
 const HEADER_FOOTER_SPACE = 30;
 const CONTENT_HEIGHT = A4_HEIGHT - PAGE_MARGIN * 2 - HEADER_FOOTER_SPACE;
 const SECTION_SPACING = 24;
+
+// Type guard for custom section value with items array
+function isItemsArraySection(value: unknown): value is { items: unknown[] } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "items" in value &&
+    Array.isArray((value as { items: unknown[] }).items)
+  );
+}
 
 // Utility to estimate content height for pagination
 function estimateContentHeight(data: ResumeData, sectionsToRender: string[]): number {
@@ -35,14 +45,9 @@ function estimateContentHeight(data: ResumeData, sectionsToRender: string[]): nu
       totalHeight += data.projects.length * 90;
     } else if (key.startsWith("custom:")) {
       const section = data.customSections?.find((cs) => cs.id === key.replace("custom:", ""));
-      if (
-        section?.value &&
-        typeof section.value === 'object' &&
-        section.value !== null &&
-        Array.isArray((section.value as Record<string, unknown>).items)
-      ) {
+      if (section?.value && isItemsArraySection(section.value)) {
         totalHeight += 50;
-        totalHeight += ((section.value as Record<string, unknown>).items as unknown[]).length * 40;
+        totalHeight += section.value.items.length * 40;
       }
     }
     totalHeight += SECTION_SPACING;
@@ -71,13 +76,8 @@ function splitContentAcrossPages(data: ResumeData, sectionsToRender: string[]): 
       sectionHeight = 50 + data.projects.length * 90;
     } else if (key.startsWith("custom:")) {
       const section = data.customSections?.find((cs) => cs.id === key.replace("custom:", ""));
-      if (
-        section?.value &&
-        typeof section.value === 'object' &&
-        section.value !== null &&
-        Array.isArray((section.value as Record<string, unknown>).items)
-      ) {
-        sectionHeight = 50 + ((section.value as Record<string, unknown>).items as unknown[]).length * 40;
+      if (section?.value && isItemsArraySection(section.value)) {
+        sectionHeight = 50 + section.value.items.length * 40;
       }
     }
     sectionHeight += SECTION_SPACING;
@@ -96,15 +96,22 @@ function splitContentAcrossPages(data: ResumeData, sectionsToRender: string[]): 
   return pages.length > 0 ? pages : [[]];
 }
 
-export function ResumePreview({ data, template }: { data: ResumeData; template: string }) {
-  // Defensive: fallback to Onyx if template not found
+// Wrapper to render any template with correct props
+function TemplateWrapper({ data, sectionsToRender, template }: { data: ResumeData; sectionsToRender: string[]; template: string }) {
   const TemplateComponent = getTemplate(template) || Onyx;
-  const sectionOrder = data?.sectionOrder || [];
+  // All templates accept data and sectionsToRender
+  return (
+    <TemplateComponent data={data} sectionsToRender={sectionsToRender} />
+  );
+}
 
+export function ResumePreview({ data, template }: { data: ResumeData; template: string }) {
+  const resumeData = data;
+  const sectionOrder = resumeData?.sectionOrder || [];
   // Pagination logic
-  const totalContentHeight = estimateContentHeight(data, sectionOrder);
+  const totalContentHeight = estimateContentHeight(resumeData, sectionOrder);
   const needsPagination = totalContentHeight > CONTENT_HEIGHT;
-  const pages = needsPagination ? splitContentAcrossPages(data, sectionOrder) : [sectionOrder];
+  const pages = needsPagination ? splitContentAcrossPages(resumeData, sectionOrder) : [sectionOrder];
 
   // Responsive scale for preview (not for print)
   const getScale = () => {
@@ -140,15 +147,13 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
       }
     `;
     document.head.appendChild(style);
-    return () => {
-      if (document.head.contains(style)) document.head.removeChild(style);
-    };
+    return () => { if (document.head.contains(style)) document.head.removeChild(style); };
   }, []);
 
   const scaledWidth = A4_WIDTH * scale;
   const scaledHeight = A4_HEIGHT * scale;
 
-  if (!data) {
+  if (!resumeData) {
     return (
       <div className="flex flex-col items-center p-4" style={{ background: "#f5f5f5" }}>
         <div className="w-full max-w-[850px]">
@@ -167,7 +172,7 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
     );
   }
 
-  // Render all pages, each with the correct template and sections
+  // Enhanced preview with clean, responsive UI and correct print/export
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -245,9 +250,10 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
                       height: `${100 / scale}%`,
                     }}
                   >
-                    <TemplateComponent
-                      data={data}
+                    <TemplateWrapper
+                      data={resumeData}
                       sectionsToRender={pageSections}
+                      template={template}
                     />
                   </div>
                 </div>
