@@ -232,23 +232,38 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
+              pageBreakAfter: "always",
             }}
           >
             <div
               style={{
-                flex: 1,
+                flex: "1 1 0%",
                 padding: PAGE_MARGIN,
                 overflow: "hidden",
                 overflowX: "hidden",
                 background: "#fff",
-                minHeight: CONTENT_HEIGHT,
-                maxHeight: CONTENT_HEIGHT,
                 wordBreak: "break-word",
                 display: "block",
                 boxSizing: "border-box",
               }}
             >
               <TemplateComponent data={data} sectionsToRender={sectionOrder} />
+            </div>
+            <div
+              style={{
+                height: FOOTER_HEIGHT,
+                flexShrink: 0,
+                borderTop: "1px solid #2563eb",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 12,
+                background: "#fff",
+                color: "#222",
+                letterSpacing: 1
+              }}
+            >
+              {/* No page number for single page */}
             </div>
           </div>
         </div>
@@ -298,15 +313,14 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
             )}
             <div
               style={{
-                flex: 1,
+                flex: "1 1 0%",
                 padding: PAGE_MARGIN,
                 overflow: "hidden",
                 overflowX: "hidden",
                 background: "#fff",
-                minHeight: CONTENT_HEIGHT,
-                maxHeight: CONTENT_HEIGHT,
                 wordBreak: "break-word",
                 display: "block",
+                // minHeight: PAGE_MARGIN+1,
                 boxSizing: "border-box",
               }}
             >
@@ -323,12 +337,10 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
                 fontSize: 12,
                 background: "#fff",
                 color: "#222",
-                letterSpacing: 1,
-                marginTop: 8,
-                paddingTop: 2,
+                letterSpacing: 1
               }}
             >
-              {idx > 0 ? `Page ${idx + 1}` : null}
+              {pages.length > 1 ? `Page ${idx + 1}` : null}
             </div>
           </div>
         ))}
