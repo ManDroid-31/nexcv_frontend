@@ -85,13 +85,13 @@ const transformLinkedInData = (linkedInData: Record<string, unknown>): ResumeDat
     }
 
     return {
-      id: exp.id as string || `exp-${index + 1}`,
+    id: exp.id as string || `exp-${index + 1}`,
       company: (exp.company as string) || (exp.organization as string) || (exp.employer as string) || (exp.institution as string) || '',
       position: (exp.position as string) || (exp.title as string) || (exp.role as string) || (exp.jobTitle as string) || '',
       startDate: exp.startDate as string || exp.start_date as string || '',
       endDate: exp.endDate as string || exp.end_date as string || '',
       description,
-      tags: exp.tags as string[] || []
+    tags: exp.tags as string[] || []
     };
   });
 
@@ -213,9 +213,9 @@ const transformLinkedInData = (linkedInData: Record<string, unknown>): ResumeDat
             description: finalDescription,
             date
           });
-        });
+  });
 
-        return {
+  return {
           id: sectionId,
           name: sectionName,
           type: 'array-object' as const,

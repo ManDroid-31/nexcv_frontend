@@ -1,6 +1,6 @@
 import React from "react";
 import type { TemplateProps } from "../../types/template";
-import type { CustomSection } from "@/types/resume";
+import type { CustomSection, ArrayObjectItem } from "@/types/resume";
 
 // ❗ This template renders resume sections cleanly without pagination logic.
 // Pagination and page-splitting are handled in ResumePreview.tsx based on word/sentence count.
@@ -13,7 +13,7 @@ export const Leafish = ({ data, sectionsToRender }: TemplateProps) => {
       if (section.value.length > 0 && typeof section.value[0] === 'string') {
         return (
           <div className="space-y-1">
-            {section.value.map((item, idx) => (
+            {(section.value as string[]).map((item, idx) => (
               <p key={idx} className="text-gray-700">{item}</p>
             ))}
           </div>
@@ -23,13 +23,16 @@ export const Leafish = ({ data, sectionsToRender }: TemplateProps) => {
       if (section.value.length > 0 && typeof section.value[0] === 'object' && section.value[0] !== null && 'title' in section.value[0]) {
         return (
           <div className="space-y-3">
-            {section.value.map((item, idx) => (
-              <div key={idx} className="mb-3">
-                <h4 className="font-medium text-lg">{item.title}</h4>
-                {item.description && <p className="text-gray-700 mb-1">{item.description}</p>}
-                {item.date && <p className="text-sm text-gray-500">{item.date}</p>}
-              </div>
-            ))}
+            {section.value.map((item, idx) => {
+              const objItem = item as ArrayObjectItem;
+              return (
+                <div key={idx} className="mb-3">
+                  <h4 className="font-medium text-lg">{objItem.title}</h4>
+                  {objItem.description && <p className="text-gray-700 mb-1">{objItem.description}</p>}
+                  {objItem.date && <p className="text-sm text-gray-500">{objItem.date}</p>}
+                </div>
+              );
+            })}
           </div>
         );
       }

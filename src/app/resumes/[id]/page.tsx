@@ -7,8 +7,7 @@ import { ResumeData } from "@/types/resume";
 import { getResumeById } from "@/data/resume";
 import { Lock, Unlock } from "lucide-react";
 import Link from "next/link";
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { generateResumePDFFromPreview } from "@/lib/pdf-generator";
 
 export default function PublicResumePage() {
   const params = useParams();
@@ -49,6 +48,7 @@ export default function PublicResumePage() {
     const downloadType = searchParams?.get('download');
     if (!downloadType) return;
     setDownloading(true);
+    
     if (downloadType === 'json') {
       // Download JSON
       const jsonData = JSON.stringify(resume, null, 2);
@@ -70,26 +70,20 @@ export default function PublicResumePage() {
         router.replace(`/resumes/${id}?view=publicview`);
       }, 100);
     } else if (downloadType === 'pdf') {
-      // Download PDF using ResumePreview and html2canvas/jsPDF
+      // Download PDF using the new PDF generator
       setTimeout(async () => {
         try {
           const previewNode = previewRef.current;
           if (!previewNode) throw new Error('Preview not found');
-          const pages = Array.from(previewNode.querySelectorAll('.resume-print-page'));
-          if (pages.length === 0) throw new Error('No pages found in preview');
-          const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [794, 1123] });
-          for (let i = 0; i < pages.length; i++) {
-            const canvas = await html2canvas(pages[i] as HTMLElement, { scale: 2, backgroundColor: '#fff' });
-            const imgData = canvas.toDataURL('image/png');
-            if (i > 0) pdf.addPage([794, 1123], 'p');
-            pdf.addImage(imgData, 'PNG', 0, 0, 794, 1123);
-          }
+          
           const fileName = `${resume.personalInfo?.name || resume.title || 'resume'}-${new Date().toISOString().split('T')[0]}.pdf`
             .replace(/[^a-zA-Z0-9-]/g, '-')
             .toLowerCase();
-          pdf.save(fileName);
-        } catch {
-          // Optionally show error
+          
+          await generateResumePDFFromPreview(previewNode, fileName);
+        } catch (error) {
+          console.error('Error generating PDF:', error);
+          // Fallback: show error message or try alternative method
         } finally {
           setDownloading(false);
           router.replace(`/resumes/${id}?view=publicview`);

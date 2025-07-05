@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { fetchLinkedInResume } from '@/data/resume';
 import { AppNavbar } from '@/components/AppNavbar';
 import { useRequireAuth } from '@/hooks/use-require-auth';
-import { generateResumePDF } from '@/lib/pdf-generator';
+import { generateResumePDFFromData } from '@/lib/pdf-generator';
 import { Button } from '@/components/ui/button';
 
 // Client-side only date formatter to prevent hydration mismatch
@@ -236,7 +236,7 @@ export default function DashboardClient() {
         .toLowerCase();
 
       // Generate and download PDF
-      generateResumePDF(resume, fileName);
+      await generateResumePDFFromData(resume, fileName);
       
       toast.success('Resume downloaded successfully!');
     } catch (error) {

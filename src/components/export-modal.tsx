@@ -12,8 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Download, Share2, Code, Copy, ExternalLink, CheckCircle, FileText, Loader2 } from "lucide-react"
 import { toast } from 'sonner'
 import { ResumeData } from '@/types/resume'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+import { generateResumePDFFromPreview } from '@/lib/pdf-generator'
 import { ResumePreview } from './resume-preview'
 
 interface ExportModalProps {
@@ -35,21 +34,11 @@ export function ExportModal({ isOpen, onClose, resumeData }: ExportModalProps) {
       // Render hidden preview
       const previewNode = previewRef.current
       if (!previewNode) throw new Error('Preview not found')
-      // Find all .resume-print-page nodes (one per page)
-      const pages = Array.from(previewNode.querySelectorAll('.resume-print-page'))
-      if (pages.length === 0) throw new Error('No pages found in preview')
-      // Use A4 size in px (794x1123)
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [794, 1123] })
-      for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i] as HTMLElement, { scale: 2, backgroundColor: '#fff' })
-        const imgData = canvas.toDataURL('image/png')
-        if (i > 0) pdf.addPage([794, 1123], 'p')
-        pdf.addImage(imgData, 'PNG', 0, 0, 794, 1123)
-      }
       const fileName = `${resumeData.personalInfo?.name || resumeData.title || 'resume'}-${new Date().toISOString().split('T')[0]}.pdf`
         .replace(/[^a-zA-Z0-9-]/g, '-')
         .toLowerCase()
-      pdf.save(fileName)
+      
+      await generateResumePDFFromPreview(previewNode, fileName)
       
       toast.success('PDF downloaded successfully! This is a standard PDF file and safe to open.')
     } catch (error) {
