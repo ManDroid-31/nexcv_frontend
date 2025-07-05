@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { ResumePreview } from "@/components/resume-preview";
 import { ResumeData } from "@/types/resume";
+import { getResumeById } from "@/data/resume";
 import { Lock, Unlock } from "lucide-react";
 import Link from "next/link";
 import html2canvas from 'html2canvas';
@@ -24,30 +25,20 @@ export default function PublicResumePage() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    fetch(`/api/resumes/${id}?view=publicview`)
-      .then(async (res) => {
-        if (res.status === 404) throw new Error("notfound");
-        if (res.status === 403) throw new Error("private");
-        if (!res.ok) throw new Error("unknown");
-        const data = await res.json();
-        if (
-          data.visibility === "public" ||
-          data.isPublic === true ||
-          (data.data && data.data.isPublic === true)
-        ) {
-          setResume(
-            data.data
-              ? { ...data.data, id: data.id, title: data.title, template: data.template }
-              : data
-          );
-        } else {
-          setIsPrivate(true);
-        }
+    
+    getResumeById(id, undefined, 'publicview')
+      .then((resumeData) => {
+        setResume(resumeData);
       })
       .catch((err) => {
-        if (err.message === "notfound") setNotFound(true);
-        else if (err.message === "private") setIsPrivate(true);
-        else setNotFound(true);
+        console.error('Error fetching resume:', err);
+        if (err.message.includes('not found') || err.message.includes('404')) {
+          setNotFound(true);
+        } else if (err.message.includes('Access denied') || err.message.includes('403')) {
+          setIsPrivate(true);
+        } else {
+          setNotFound(true);
+        }
       })
       .finally(() => setLoading(false));
   }, [id]);

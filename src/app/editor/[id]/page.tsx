@@ -276,7 +276,7 @@ export default function ResumeEditor({ params }: PageProps) {
       return resumeData[key];
     }
     const customSection = resumeData.customSections.find(
-      section => section.name.toLowerCase().replace(/\s+/g, '') === key
+      section => typeof section.name === 'string' && section.name.toLowerCase().replace(/\s+/g, '') === key
     );
     return customSection?.value;
   };
@@ -290,7 +290,7 @@ export default function ResumeEditor({ params }: PageProps) {
       markAsUnsaved(resumeData.id);
     } else {
       const customSection = resumeData.customSections.find(
-        section => section.name.toLowerCase().replace(/\s+/g, '') === key
+        section => typeof section.name === 'string' && section.name.toLowerCase().replace(/\s+/g, '') === key
       );
       if (customSection) {
         const updatedSections = resumeData.customSections.map(section =>
@@ -513,43 +513,48 @@ export default function ResumeEditor({ params }: PageProps) {
     toast.success(`${enhancementText} Review the changes in JSON mode.`);
   };
 
+  const BUILT_IN_SECTION_NAMES = [
+    'personalinfo', 'summary', 'experience', 'education', 'projects', 'skills',
+    'title', 'slug', 'ispublic', 'template', 'tags', 'layout',
+  ];
+
   const handleAddSection = (sectionName: string, sectionType: string) => {
-    if (!sectionName) {
+    if (!sectionName || !sectionName.trim()) {
       toast.error('Please enter a section name');
       return;
     }
-
     const formattedName = sectionName.trim().toLowerCase().replace(/\s+/g, '');
-    
-    // Check if section already exists in customSections
-    if (resumeData && resumeData.customSections.some(section => 
-      section.name.toLowerCase().replace(/\s+/g, '') === formattedName
-    )) {
+    if (BUILT_IN_SECTION_NAMES.includes(formattedName)) {
+      toast.error('Section name conflicts with a built-in section');
+      return;
+    }
+    if (
+      resumeData &&
+      resumeData.customSections.some(
+        section =>
+          typeof section.name === 'string' &&
+          section.name.toLowerCase().replace(/\s+/g, '') === formattedName
+      )
+    ) {
       toast.error('Section already exists');
       return;
     }
-
     // Validate section type
     if (!(sectionType in SECTION_TEMPLATES)) {
-      console.log('Invalid type:', sectionType, 'Available types:', Object.keys(SECTION_TEMPLATES));
       toast.error('Invalid section type');
       return;
     }
-
     // Get template for the section type
     const template = SECTION_TEMPLATES[sectionType as SectionType];
-    
     // Create new section with template
     const newSection = JSON.parse(JSON.stringify(template)) as CustomSectionValue;
-    
     // Add to customSections array
     const customSection: CustomSection = {
       id: Date.now().toString(),
-      name: sectionName.trim(), // Use trimmed name for display
+      name: sectionName.trim(),
       type: sectionType as SectionType,
       value: newSection
     };
-
     if (resumeData) {
       const newSectionKey = `custom:${customSection.id}`;
       setResumeData({
@@ -560,6 +565,37 @@ export default function ResumeEditor({ params }: PageProps) {
       markAsUnsaved(resumeId);
       toast.success('New section added successfully');
     }
+  };
+
+  // Helper function to rename a custom section and update sectionOrder
+  const renameCustomSection = (customSection: CustomSection, newName: string) => {
+    if (!resumeData) return;
+    const formattedNewName = newName.trim().toLowerCase().replace(/\s+/g, '');
+    if (!newName || BUILT_IN_SECTION_NAMES.includes(formattedNewName)) {
+      toast.error('Invalid or reserved section name');
+      return;
+    }
+    if (
+      resumeData.customSections.some(
+        section =>
+          section.id !== customSection.id &&
+          typeof section.name === 'string' && section.name.toLowerCase().replace(/\s+/g, '') === formattedNewName
+      )
+    ) {
+      toast.error('Another custom section already has this name');
+      return;
+    }
+    // Update customSections
+    const updatedSections = resumeData.customSections.map(s =>
+      s.id === customSection.id ? { ...s, name: newName.trim() } : s
+    );
+    // Update sectionOrder (the key is custom:ID, so no need to change unless you want to support name-based keys)
+    setResumeData({
+      ...resumeData,
+      customSections: updatedSections
+    });
+    markAsUnsaved(resumeId);
+    toast.success('Section renamed successfully');
   };
 
   // Helper function to remove a section
@@ -590,7 +626,7 @@ export default function ResumeEditor({ params }: PageProps) {
   const renderFormField = (key: string, value: unknown) => {
     // Find if this is a custom section
     const customSection = resumeData?.customSections?.find(section => 
-      section.name?.toLowerCase().replace(/\s+/g, '') === key
+      typeof section.name === 'string' && section.name?.toLowerCase().replace(/\s+/g, '') === key
     );
 
     const renderSectionHeader = (title: string) => (
@@ -1392,6 +1428,7 @@ export default function ResumeEditor({ params }: PageProps) {
                     <SortableDraggableSection
                       id={key}
                       title={customSection.name}
+                      onTitleChange={newName => renameCustomSection(customSection, newName)}
                       isDragging={false}
                     >
                       {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, ''), customSection.value)}
@@ -1405,17 +1442,7 @@ export default function ResumeEditor({ params }: PageProps) {
                   key={key}
                   id={key}
                   title={customSection.name}
-                  onTitleChange={newName => {
-                    // Update custom section name and sectionOrder
-                    const updatedSections = resumeData.customSections.map((s: CustomSection) =>
-                      s.id === customSection.id ? { ...s, name: newName } : s
-                    );
-                    const updatedOrder = [...validSectionOrder, ...customSectionOrder].map(k =>
-                      k === key ? `custom:${customSection.id}` : k
-                    );
-                    updateResumeData({ customSections: updatedSections, sectionOrder: updatedOrder });
-                    markAsUnsaved(resumeId);
-                  }}
+                  onTitleChange={newName => renameCustomSection(customSection, newName)}
                   isDragging={false}
                 >
                   {renderFormField(customSection.name.toLowerCase().replace(/\s+/g, ''), customSection.value)}

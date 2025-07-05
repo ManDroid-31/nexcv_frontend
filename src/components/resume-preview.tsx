@@ -27,6 +27,14 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
   // Memoize the data string to detect actual changes
   const dataString = useMemo(() => JSON.stringify(data), [data]);
   
+  // Debug: Log section order and custom sections (only in development)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && data && data.sectionOrder) {
+      console.log('Section Order:', data.sectionOrder);
+      console.log('Custom Sections:', data.customSections);
+    }
+  }, [data]);
+  
   // Check if we need to re-measure
   const needsRemeasuring = useMemo(() => {
     return !hasInitialized || dataString !== lastDataRef.current || template !== lastTemplateRef.current;
@@ -38,7 +46,12 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
       <div
         key={`${sectionKey}-${idx}-${dataString}`}
         ref={el => { sectionRefs.current[idx] = el; }}
-        style={{ width: A4_WIDTH, boxSizing: "border-box" }}
+        style={{ 
+          width: A4_WIDTH, 
+          boxSizing: "border-box",
+          pageBreakInside: "avoid",
+          breakInside: "avoid"
+        }}
       >
         <TemplateComponent data={data} sectionsToRender={[sectionKey]} />
       </div>
@@ -62,9 +75,40 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
         // More conservative pagination: leave some buffer space
         const bufferSpace = 20; // 20px buffer
         const availableHeight = CONTENT_HEIGHT - bufferSpace;
-        
-        // If section fits with buffer space, add to current page
-        if (currentHeight + sectionHeight <= availableHeight || currentHeight === 0) {
+        // If section is too tall for a single page, force it onto a new page and show warning
+        if (sectionHeight > availableHeight) {
+          // If not at top of page, start a new page first
+          if (currentHeight !== 0) {
+            if (currentPage.length > 0) allPages.push(currentPage);
+            currentPage = [];
+            currentHeight = 0;
+          }
+          // Add the too-tall section as its own page
+          allPages.push([
+            <div key={`oversize-warning-${idx}`} style={{ position: 'relative' }}>
+              {sectionNodes[idx]}
+              <div style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                background: 'rgba(255,0,0,0.85)',
+                color: '#fff',
+                padding: '4px 10px',
+                borderRadius: 6,
+                fontWeight: 700,
+                fontSize: 13,
+                zIndex: 10,
+                pointerEvents: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
+              }}>
+                Section too tall for one page!
+              </div>
+            </div>
+          ]);
+          currentPage = [];
+          currentHeight = 0;
+        } else if (currentHeight + sectionHeight <= availableHeight || currentHeight === 0) {
+          // If section fits with buffer space, add to current page
           currentPage.push(sectionNodes[idx]);
           currentHeight += sectionHeight;
         } else {

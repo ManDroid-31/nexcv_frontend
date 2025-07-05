@@ -23,6 +23,31 @@ export const Ditto = ({ data, sectionsToRender }: TemplateProps) => {
     }
     // Array of strings/objects
     if (Array.isArray(section.value)) {
+      // Array of primitives
+      if (section.value.length > 0 && typeof section.value[0] === 'string') {
+        return (
+          <div className="space-y-1">
+            {section.value.map((item, idx) => (
+              <p key={idx} className="text-gray-700">{item}</p>
+            ))}
+          </div>
+        );
+      }
+      // Array of objects (ArrayObjectItem[])
+      if (section.value.length > 0 && typeof section.value[0] === 'object' && section.value[0] !== null && 'title' in section.value[0]) {
+        return (
+          <div className="space-y-3">
+            {section.value.map((item, idx) => (
+              <div key={idx} className="mb-3">
+                <h4 className="font-medium text-lg">{item.title}</h4>
+                {item.description && <p className="text-gray-700 mb-1">{item.description}</p>}
+                {item.date && <p className="text-sm text-gray-500">{item.date}</p>}
+              </div>
+            ))}
+          </div>
+        );
+      }
+      // Generic array of objects
       return (
         <div className="space-y-2">
           {section.value.map((item, index) => (
