@@ -85,11 +85,14 @@ export const Gengar = ({ data, sectionsToRender }: TemplateProps) => {
     if (key === 'personalInfo') {
       return (
         <header key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
-          <h1 className="text-5xl font-bold mb-3 text-white">{data.personalInfo.name}</h1>
-          <div className="text-gray-300 space-y-1" style={{ lineHeight: spacing.lineHeight }}>
+          <h1 className="text-4xl font-bold mb-2 text-purple-600">{data.personalInfo.name}</h1>
+          <div className="text-gray-600" style={{ lineHeight: spacing.lineHeight }}>
             <p>{data.personalInfo.email}</p>
             <p>{data.personalInfo.phone}</p>
             <p>{data.personalInfo.location}</p>
+            {data.personalInfo.website && (
+              <p>{data.personalInfo.website}</p>
+            )}
           </div>
         </header>
       );
@@ -125,21 +128,29 @@ export const Gengar = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'education' && data.education?.length) {
       return (
-        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
-          <h2 className="text-2xl font-bold mb-4 text-purple-400 border-b-2 border-purple-600 pb-2">Education</h2>
-          <div className="space-y-4">
-            {data.education.map((edu) => (
-              <div key={edu.id} className="border-l-4 border-purple-500 pl-4 bg-gray-800 p-4 rounded-r-lg" style={{ pageBreakInside: 'avoid' }}>
-                <h3 className="text-xl font-bold text-white">{edu.degree}</h3>
-                <div className="text-purple-300">
-                  <span className="font-semibold">{edu.school}</span>
-                  {edu.startDate && (
-                    <span className="ml-2">• {edu.startDate} - {edu.endDate || 'Present'}</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+        <section key={key} className="mb-6">
+          <h2 className="text-xl font-bold mb-2">Education</h2>
+          <ul className="space-y-2">
+            {data.education.map((edu, idx) => {
+              const school = edu.school || edu.institution || edu.college || edu.university || edu.organization || '';
+              const specialization = edu.degree || edu.field || edu.major || edu.program || '';
+              const formatDate = (date: string) => {
+                if (!date) return '';
+                const d = new Date(date);
+                if (isNaN(d.getTime())) return date;
+                return d.toLocaleString('default', { month: 'short', year: 'numeric' });
+              };
+              return (
+                <li key={edu.id}>
+                  <div className="font-semibold">{school}</div>
+                  <div className="text-sm text-gray-700">{specialization}</div>
+                  <div className="text-xs text-gray-500">
+                    {formatDate(edu.startDate || edu.start_date)}{(edu.startDate || edu.start_date) && (edu.endDate || edu.end_date) ? ' – ' : ''}{formatDate(edu.endDate || edu.end_date)}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       );
     }
@@ -163,41 +174,36 @@ export const Gengar = ({ data, sectionsToRender }: TemplateProps) => {
     if (key === 'projects' && data.projects?.length) {
       return (
         <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
-          <h2 className="text-2xl font-bold mb-4 text-purple-400 border-b-2 border-purple-600 pb-2">Projects</h2>
-          <div className="space-y-6">
-            {data.projects.map((project) => (
-              <div key={project.id} className="border-l-4 border-purple-500 pl-4 bg-gray-800 p-4 rounded-r-lg" style={{ pageBreakInside: 'avoid' }}>
-                <h3 className="text-xl font-bold text-white">{project.name}</h3>
-                {(project.liveUrl || project.githubUrl) && (
-                  <div className="text-sm text-purple-300 mb-2">
-                    {project.liveUrl && (
-                      <a href={project.liveUrl} target="_blank" rel="noopener noreferrer" className="text-purple-300 hover:text-purple-100 underline mr-4">
-                        Live Demo
-                      </a>
-                    )}
-                    {project.githubUrl && (
-                      <a href={project.githubUrl} target="_blank" rel="noopener noreferrer" className="text-purple-300 hover:text-purple-100 underline">
-                        GitHub
-                      </a>
-                    )}
-                  </div>
-                )}
-                <p className="text-gray-300 mb-3 leading-relaxed" style={{ lineHeight: spacing.lineHeight }}>{project.description}</p>
-                {project.technologies && project.technologies.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {project.technologies.map((tech, index) => (
-                      <span
-                        key={index}
-                        className="bg-gray-700 text-gray-200 px-3 py-1 rounded-full text-sm font-medium"
-                      >
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <h2 className="text-2xl font-semibold border-b-2 border-purple-600 pb-2 mb-2 text-purple-600">Projects</h2>
+          {data.projects.map((project) => (
+            <div key={project.id} className="mb-4" style={{ pageBreakInside: 'avoid' }}>
+              <h3 className="text-xl font-medium text-purple-600">{project.name}</h3>
+              <p style={{ lineHeight: spacing.lineHeight }}>{project.description}</p>
+              {(project.liveUrl || project.githubUrl) && (
+                <div className="flex flex-wrap gap-2 mt-1 mb-2">
+                  {project.liveUrl && (
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm">
+                      <span className="font-medium">Live:</span> {project.liveUrl}
+                    </span>
+                  )}
+                  {project.githubUrl && (
+                    <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
+                      <span className="font-medium">GitHub:</span> {project.githubUrl}
+                    </span>
+                  )}
+                </div>
+              )}
+              {project.technologies && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {project.technologies.map((tech, idx) => (
+                    <span key={idx} className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </section>
       );
     }

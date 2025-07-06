@@ -82,12 +82,15 @@ export const Leafish = ({ data, sectionsToRender }: TemplateProps) => {
   function renderSectionByKey(key: string) {
     if (key === 'personalInfo') {
       return (
-        <header key={key} className="break-inside-avoid">
-          <h1 className="text-4xl font-light mb-2 text-gray-900">{data.personalInfo.name}</h1>
-          <div className="text-gray-600 space-y-1 text-sm" style={{ lineHeight: spacing.lineHeight }}>
+        <header key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
+          <h1 className="text-4xl font-bold mb-2 text-emerald-600">{data.personalInfo.name}</h1>
+          <div className="text-gray-600" style={{ lineHeight: spacing.lineHeight }}>
             <p>{data.personalInfo.email}</p>
             <p>{data.personalInfo.phone}</p>
             <p>{data.personalInfo.location}</p>
+            {data.personalInfo.website && (
+              <p>{data.personalInfo.website}</p>
+            )}
           </div>
         </header>
       );
@@ -123,21 +126,29 @@ export const Leafish = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'education' && data.education?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
-          <h2 className="text-lg font-medium mb-4 text-gray-900 uppercase tracking-wide">Education</h2>
-          <div className="space-y-4">
-            {data.education.map((edu) => (
-              <div key={edu.id}>
-                <div className="flex justify-between items-start mb-1">
-                  <h3 className="text-lg font-medium text-gray-900">{edu.degree}</h3>
-                  {edu.startDate && (
-                    <span className="text-sm text-gray-500">{edu.startDate} - {edu.endDate || 'Present'}</span>
-                  )}
-                </div>
-                <p className="text-gray-600">{edu.school}</p>
-              </div>
-            ))}
-          </div>
+        <section key={key} className="mb-6">
+          <h2 className="text-xl font-bold mb-2">Education</h2>
+          <ul className="space-y-2">
+            {data.education.map((edu, idx) => {
+              const school = edu.school || edu.institution || edu.college || edu.university || edu.organization || '';
+              const specialization = edu.degree || edu.field || edu.major || edu.program || '';
+              const formatDate = (date: string) => {
+                if (!date) return '';
+                const d = new Date(date);
+                if (isNaN(d.getTime())) return date;
+                return d.toLocaleString('default', { month: 'short', year: 'numeric' });
+              };
+              return (
+                <li key={edu.id}>
+                  <div className="font-semibold">{school}</div>
+                  <div className="text-sm text-gray-700">{specialization}</div>
+                  <div className="text-xs text-gray-500">
+                    {formatDate(edu.startDate || edu.start_date)}{(edu.startDate || edu.start_date) && (edu.endDate || edu.end_date) ? ' – ' : ''}{formatDate(edu.endDate || edu.end_date)}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       );
     }
@@ -160,44 +171,37 @@ export const Leafish = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'projects' && data.projects?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
-          <h2 className="text-lg font-medium mb-4 text-gray-900 uppercase tracking-wide">Projects</h2>
-          <div className="space-y-6">
-            {data.projects.map((project) => (
-              <div key={project.id}>
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-medium text-gray-900">{project.name}</h3>
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
+          <h2 className="text-2xl font-semibold border-b-2 border-emerald-600 pb-2 mb-2 text-emerald-600">Projects</h2>
+          {data.projects.map((project) => (
+            <div key={project.id} className="mb-4" style={{ pageBreakInside: 'avoid' }}>
+              <h3 className="text-xl font-medium text-emerald-600">{project.name}</h3>
+              <p style={{ lineHeight: spacing.lineHeight }}>{project.description}</p>
+              {(project.liveUrl || project.githubUrl) && (
+                <div className="flex flex-wrap gap-2 mt-1 mb-2">
+                  {project.liveUrl && (
+                    <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-sm">
+                      <span className="font-medium">Live:</span> {project.liveUrl}
+                    </span>
+                  )}
+                  {project.githubUrl && (
+                    <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
+                      <span className="font-medium">GitHub:</span> {project.githubUrl}
+                    </span>
+                  )}
                 </div>
-                {(project.liveUrl || project.githubUrl) && (
-                  <div className="text-sm text-gray-600 mb-2">
-                    {project.liveUrl && (
-                      <a href={project.liveUrl} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-800 underline mr-4">
-                        Live Demo
-                      </a>
-                    )}
-                    {project.githubUrl && (
-                      <a href={project.githubUrl} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-800 underline">
-                        GitHub
-                      </a>
-                    )}
-                  </div>
-                )}
-                <p className="text-gray-700 mb-3 leading-relaxed" style={{ lineHeight: spacing.lineHeight }}>{project.description}</p>
-                {project.technologies && project.technologies.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {project.technologies.map((tech, index) => (
-                      <span
-                        key={index}
-                        className="text-gray-600 border border-gray-300 px-2 py-0.5 rounded text-sm"
-                      >
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+              )}
+              {project.technologies && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {project.technologies.map((tech, idx) => (
+                    <span key={idx} className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-sm">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </section>
       );
     }

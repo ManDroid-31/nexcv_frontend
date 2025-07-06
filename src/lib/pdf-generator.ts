@@ -173,9 +173,6 @@ export class PDFGenerator {
     document.body.appendChild(container);
 
     try {
-      // Dynamically import ResumePreview component
-      const { ResumePreview } = await import('@/components/resume-preview');
-      
       // Create React element (this is a simplified approach)
       // In a real implementation, you'd need to render the component properly
       const previewDiv = document.createElement('div');
@@ -200,7 +197,6 @@ export class PDFGenerator {
   private createPreviewHTML(container: HTMLElement, resumeData: ResumeData): void {
     // This is a simplified HTML generation
     // In practice, you'd want to use the actual ResumePreview component
-    const template = resumeData.template || 'onyx';
     
     // Create a basic preview structure
     container.innerHTML = `

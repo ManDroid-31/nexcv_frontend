@@ -93,6 +93,9 @@ export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
             <p>{data.personalInfo.email}</p>
             <p>{data.personalInfo.phone}</p>
             <p>{data.personalInfo.location}</p>
+            {data.personalInfo.website && (
+              <p>{data.personalInfo.website}</p>
+            )}
           </div>
         </header>
       );
@@ -124,17 +127,29 @@ export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'education' && data.education?.length) {
       return (
-        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
-          <h2 className="text-2xl font-semibold border-b pb-2 mb-2">Education</h2>
-          {data.education.map((edu) => (
-            <div key={edu.id} className="mb-4" style={{ pageBreakInside: 'avoid' }}>
-              <h3 className="text-xl font-medium">{edu.degree}</h3>
-              <div className="text-gray-600 text-sm">
-                <span>{edu.school}</span>
-                {edu.startDate && <span> • {edu.startDate} - {edu.endDate || 'Present'}</span>}
-              </div>
-            </div>
-          ))}
+        <section key={key} className="mb-6">
+          <h2 className="text-xl font-bold mb-2">Education</h2>
+          <ul className="space-y-2">
+            {data.education.map((edu, idx) => {
+              const school = edu.school || edu.institution || edu.college || edu.university || edu.organization || '';
+              const specialization = edu.degree || edu.field || edu.major || edu.program || '';
+              const formatDate = (date: string) => {
+                if (!date) return '';
+                const d = new Date(date);
+                if (isNaN(d.getTime())) return date;
+                return d.toLocaleString('default', { month: 'short', year: 'numeric' });
+              };
+              return (
+                <li key={edu.id}>
+                  <div className="font-semibold">{school}</div>
+                  <div className="text-sm text-gray-700">{specialization}</div>
+                  <div className="text-xs text-gray-500">
+                    {formatDate(edu.startDate || edu.start_date)}{(edu.startDate || edu.start_date) && (edu.endDate || edu.end_date) ? ' – ' : ''}{formatDate(edu.endDate || edu.end_date)}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       );
     }
@@ -164,6 +179,20 @@ export const Onyx = ({ data, sectionsToRender }: TemplateProps) => {
             <div key={project.id} className="mb-4" style={{ pageBreakInside: 'avoid' }}>
               <h3 className="text-xl font-medium">{project.name}</h3>
               <p style={{ lineHeight: spacing.lineHeight }}>{project.description}</p>
+              {(project.liveUrl || project.githubUrl) && (
+                <div className="flex flex-wrap gap-2 mt-1 mb-2">
+                  {project.liveUrl && (
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                      <span className="font-medium">Live:</span> {project.liveUrl}
+                    </span>
+                  )}
+                  {project.githubUrl && (
+                    <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
+                      <span className="font-medium">GitHub:</span> {project.githubUrl}
+                    </span>
+                  )}
+                </div>
+              )}
               {project.technologies && (
                 <div className="flex flex-wrap gap-2 mt-1">
                   {project.technologies.map((tech, idx) => (

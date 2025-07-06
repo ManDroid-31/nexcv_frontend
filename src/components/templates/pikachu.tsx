@@ -81,12 +81,15 @@ export const Pikachu = ({ data, sectionsToRender }: TemplateProps) => {
   function renderSectionByKey(key: string) {
     if (key === 'personalInfo') {
       return (
-        <header key={key} className="break-inside-avoid">
-          <h1 className="text-5xl font-bold" style={{ marginBottom: `${spacing.paragraphGap}px` }}>{data.personalInfo.name}</h1>
-          <div className="text-lg opacity-90" style={{ lineHeight: spacing.lineHeight }}>
-            <p style={{ marginBottom: `${spacing.paragraphGap/2}px` }}>{data.personalInfo.email}</p>
-            <p style={{ marginBottom: `${spacing.paragraphGap/2}px` }}>{data.personalInfo.phone}</p>
+        <header key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
+          <h1 className="text-4xl font-bold mb-2 text-blue-600">{data.personalInfo.name}</h1>
+          <div className="text-gray-600" style={{ lineHeight: spacing.lineHeight }}>
+            <p>{data.personalInfo.email}</p>
+            <p>{data.personalInfo.phone}</p>
             <p>{data.personalInfo.location}</p>
+            {data.personalInfo.website && (
+              <p>{data.personalInfo.website}</p>
+            )}
           </div>
         </header>
       );
@@ -136,35 +139,29 @@ export const Pikachu = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'education' && data.education?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
-          <h2
-            className="text-2xl font-bold text-orange-600 border-b-2 border-orange-200 pb-2"
-            style={{ marginBottom: `${spacing.paragraphGap}px` }}
-          >
-            Education
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${spacing.paragraphGap}px` }}>
-            {data.education.map((edu) => (
-              <div
-                key={edu.id}
-                style={{
-                  borderLeft: '4px solid #fb923c',
-                  background: 'linear-gradient(to right, #ffedd5, transparent)',
-                  padding: '16px',
-                  borderRadius: '1rem',
-                  marginBottom: `${spacing.paragraphGap/2}px`
-                }}
-              >
-                <h3 className="text-xl font-bold text-gray-900" style={{ marginBottom: `${spacing.paragraphGap/2}px` }}>{edu.degree}</h3>
-                <div className="text-orange-600" style={{ lineHeight: spacing.lineHeight }}>
-                  <span className="font-semibold">{edu.school}</span>
-                  {edu.startDate && (
-                    <span className="ml-2">• {edu.startDate} - {edu.endDate || 'Present'}</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+        <section key={key} className="mb-6">
+          <h2 className="text-xl font-bold mb-2">Education</h2>
+          <ul className="space-y-2">
+            {data.education.map((edu, idx) => {
+              const school = edu.school || edu.institution || edu.college || edu.university || edu.organization || '';
+              const specialization = edu.degree || edu.field || edu.major || edu.program || '';
+              const formatDate = (date: string) => {
+                if (!date) return '';
+                const d = new Date(date);
+                if (isNaN(d.getTime())) return date;
+                return d.toLocaleString('default', { month: 'short', year: 'numeric' });
+              };
+              return (
+                <li key={edu.id}>
+                  <div className="font-semibold">{school}</div>
+                  <div className="text-sm text-gray-700">{specialization}</div>
+                  <div className="text-xs text-gray-500">
+                    {formatDate(edu.startDate || edu.start_date)}{(edu.startDate || edu.start_date) && (edu.endDate || edu.end_date) ? ' – ' : ''}{formatDate(edu.endDate || edu.end_date)}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       );
     }
@@ -193,56 +190,37 @@ export const Pikachu = ({ data, sectionsToRender }: TemplateProps) => {
     }
     if (key === 'projects' && data.projects?.length) {
       return (
-        <section key={key} className="break-inside-avoid">
-          <h2
-            className="text-2xl font-bold text-orange-600 border-b-2 border-orange-200 pb-2"
-            style={{ marginBottom: `${spacing.paragraphGap}px` }}
-          >
-            Projects
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${spacing.paragraphGap}px` }}>
-            {data.projects.map((project) => (
-              <div
-                key={project.id}
-                style={{
-                  borderLeft: '4px solid #fb923c',
-                  background: 'linear-gradient(to right, #ffedd5, transparent)',
-                  padding: '16px',
-                  borderRadius: '1rem',
-                  marginBottom: `${spacing.paragraphGap/2}px`
-                }}
-              >
-                <h3 className="text-xl font-bold text-gray-900" style={{ marginBottom: `${spacing.paragraphGap/2}px` }}>{project.name}</h3>
-                {(project.liveUrl || project.githubUrl) && (
-                  <div className="text-sm text-orange-600" style={{ marginBottom: `${spacing.paragraphGap/2}px` }}>
-                    {project.liveUrl && (
-                      <a href={project.liveUrl} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:text-orange-800 underline mr-4">
-                        Live Demo
-                      </a>
-                    )}
-                    {project.githubUrl && (
-                      <a href={project.githubUrl} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:text-orange-800 underline">
-                        GitHub
-                      </a>
-                    )}
-                  </div>
-                )}
-                <p className="text-gray-700" style={{ lineHeight: spacing.lineHeight, marginBottom: `${spacing.paragraphGap/2}px` }}>{project.description}</p>
-                {project.technologies && project.technologies.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {project.technologies.map((tech, index) => (
-                      <span
-                        key={index}
-                        className="bg-gradient-to-r from-orange-400 to-yellow-400 text-white px-3 py-1 rounded-full text-sm font-medium"
-                      >
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+        <section key={key} className="mb-6" style={{ pageBreakInside: 'avoid', pageBreakAfter: 'auto' }}>
+          <h2 className="text-2xl font-semibold border-b-2 border-blue-600 pb-2 mb-2 text-blue-600">Projects</h2>
+          {data.projects.map((project) => (
+            <div key={project.id} className="mb-4" style={{ pageBreakInside: 'avoid' }}>
+              <h3 className="text-xl font-medium text-blue-600">{project.name}</h3>
+              <p style={{ lineHeight: spacing.lineHeight }}>{project.description}</p>
+              {(project.liveUrl || project.githubUrl) && (
+                <div className="flex flex-wrap gap-2 mt-1 mb-2">
+                  {project.liveUrl && (
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                      <span className="font-medium">Live:</span> {project.liveUrl}
+                    </span>
+                  )}
+                  {project.githubUrl && (
+                    <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
+                      <span className="font-medium">GitHub:</span> {project.githubUrl}
+                    </span>
+                  )}
+                </div>
+              )}
+              {project.technologies && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {project.technologies.map((tech, idx) => (
+                    <span key={idx} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </section>
       );
     }
