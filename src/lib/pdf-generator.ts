@@ -264,7 +264,7 @@ export async function generateResumePDFFromData(
     .toLowerCase();
   await generator.generatePDFFromResumeData(resumeData, filename || defaultFilename);
 }
-
+  
 // Legacy function for backward compatibility
 export function generateResumePDF(resumeData: ResumeData, filename?: string): void {
   generateResumePDFFromData(resumeData, filename || 'resume.pdf').catch(console.error);

@@ -5,6 +5,7 @@ import { useUser } from '@clerk/nextjs'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import React from 'react'
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import {
   Button,
   Card,
@@ -31,6 +32,7 @@ import {
 import { ResumePreview } from "@/components/resume-preview"
 import { TemplateSelector } from "@/components/template-selector"
 import { ExportModal } from "@/components/export-modal"
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { EditorHeader } from "@/components/editor-header"
 import {
@@ -59,6 +61,7 @@ import { ResumeData, CustomSection, CustomSectionValue, KeyValuePair, ArrayObjec
 import { useResumeStore } from '@/stores/resume-store'
 import { AppNavbar } from '@/components/AppNavbar'
 import { useRequireAuth } from '@/hooks/use-require-auth'
+import { useCredits } from '@/hooks/use-credits'
 
 // Dynamically import Monaco Editor with no SSR
 const MonacoEditor = dynamic(
@@ -397,6 +400,14 @@ export default function ResumeEditor({ params }: PageProps) {
   // Add debounced update for JSON editor
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [jsonEditorValue, setJsonEditorValue] = useState('');
+
+  // Keyboard shortcuts state
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [previousResumeData, setPreviousResumeData] = useState<ResumeData | null>(null);
+  const { balance } = useCredits();
+  const isAILocked = (balance || 0) <= 0;
+
+
 
   // Add this function to sync isPublic and visibility
   function syncPublicFields(data: ResumeData): ResumeData {
@@ -1576,16 +1587,64 @@ export default function ResumeEditor({ params }: PageProps) {
 
   // Add this function to get default layout for the current template
   const handleResetLayout = () => {
-    if (!resumeData) return;
-    // You need to implement getTemplateDefaultLayout to return the default layout for a template
-    const defaultLayout = getTemplateDefaultLayout(resumeData.template) as Layout;
-    setResumeData({
-      ...resumeData,
-      layout: defaultLayout
-    });
-    markAsUnsaved(resumeId);
-    toast.success('Layout reset to template default!');
+    if (resumeData) {
+      const defaultLayout = getTemplateDefaultLayout(resumeData.template) as Layout;
+      updateResumeData({ layout: defaultLayout });
+      markAsUnsaved(resumeId);
+      toast.success('Layout reset to default');
+    }
   };
+
+  // Keyboard shortcuts handlers
+  const handleCopyJSON = () => {
+    if (resumeData) {
+      // Store current data for undo
+      setPreviousResumeData(JSON.parse(JSON.stringify(resumeData)));
+      
+      // Copy JSON to clipboard
+      const jsonString = JSON.stringify(resumeData, null, 2);
+      navigator.clipboard.writeText(jsonString);
+    }
+  };
+
+  const handleUndo = () => {
+    if (previousResumeData) {
+      setResumeData(previousResumeData);
+      setPreviousResumeData(null);
+      // Update JSON editor if in JSON mode
+      if (editMode === 'json') {
+        setJsonEditorValue(JSON.stringify(previousResumeData, null, 2));
+      }
+    }
+  };
+
+  const handleAIOpen = () => {
+    // AIPanel is always visible as a floating panel
+    // Just show a toast to indicate AI panel is available
+    toast.info('AI Panel is available at the bottom of the screen');
+  };
+
+  const handleExportPDF = () => {
+    setIsExportModalOpen(true);
+    // Automatically trigger PDF download after a short delay
+    setTimeout(() => {
+      const downloadButton = document.querySelector('[data-export-pdf]') as HTMLButtonElement;
+      if (downloadButton) {
+        downloadButton.click();
+      }
+    }, 100);
+  };
+
+  // Initialize keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: handleSave,
+    onExport: handleExportPDF,
+    onAIPanel: handleAIOpen,
+    onCopyJSON: handleCopyJSON,
+    onUndo: handleUndo,
+    onShowShortcuts: () => setIsShortcutsOpen(true),
+    isAIPanelLocked: isAILocked
+  });
 
   // Move allowedKeys to top-level scope so it is accessible everywhere
   const allowedKeys = [
@@ -1973,6 +2032,12 @@ export default function ResumeEditor({ params }: PageProps) {
         />
 
         <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} resumeData={resumeData} />
+
+        {/* Keyboard Shortcuts Modal */}
+        <KeyboardShortcuts 
+          isOpen={isShortcutsOpen} 
+          onClose={() => setIsShortcutsOpen(false)} 
+        />
 
         {/* Replace the inline AI panel with the AIPanel component */}
         <AIPanel onApplyEnhanced={handleApplyEnhancedResume} />
