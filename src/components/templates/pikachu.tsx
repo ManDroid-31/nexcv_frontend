@@ -142,9 +142,9 @@ export const Pikachu = ({ data, sectionsToRender }: TemplateProps) => {
         <section key={key} className="mb-6">
           <h2 className="text-xl font-bold mb-2">Education</h2>
           <ul className="space-y-2">
-            {data.education.map((edu, idx) => {
-              const school = edu.school || edu.institution || edu.college || edu.university || edu.organization || '';
-              const specialization = edu.degree || edu.field || edu.major || edu.program || '';
+            {data.education.map((edu, index) => {
+              const school = edu.school || '';
+              const specialization = edu.degree || '';
               const formatDate = (date: string) => {
                 if (!date) return '';
                 const d = new Date(date);
@@ -152,11 +152,11 @@ export const Pikachu = ({ data, sectionsToRender }: TemplateProps) => {
                 return d.toLocaleString('default', { month: 'short', year: 'numeric' });
               };
               return (
-                <li key={edu.id}>
+                <li key={index}>
                   <div className="font-semibold">{school}</div>
                   <div className="text-sm text-gray-700">{specialization}</div>
                   <div className="text-xs text-gray-500">
-                    {formatDate(edu.startDate || edu.start_date)}{(edu.startDate || edu.start_date) && (edu.endDate || edu.end_date) ? ' – ' : ''}{formatDate(edu.endDate || edu.end_date)}
+                    {formatDate(edu.startDate)}{edu.startDate && edu.endDate ? ' – ' : ''}{formatDate(edu.endDate)}
                   </div>
                 </li>
               );
