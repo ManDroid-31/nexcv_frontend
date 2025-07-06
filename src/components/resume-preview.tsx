@@ -1,28 +1,40 @@
 "use client"
 
-import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import React, { useMemo, useEffect, useCallback, useRef, useState } from "react";
 import { getTemplate } from "./templates";
 import { Onyx } from "./templates/onyx";
 import type { ResumeData } from "@/types/resume";
 
+// A4 dimensions in px (at 96dpi)
 const A4_WIDTH = 794;
 const A4_HEIGHT = 1123;
 const PAGE_MARGIN = 40;
-const HEADER_HEIGHT = 60;
-const FOOTER_HEIGHT = 40;
-const CONTENT_HEIGHT = A4_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - (PAGE_MARGIN * 2);
+const HEADER_FOOTER_SPACE = 30;
+const CONTENT_HEIGHT = A4_HEIGHT - PAGE_MARGIN * 2 - HEADER_FOOTER_SPACE;
+
+
+
+
+
 
 export function ResumePreview({ data, template }: { data: ResumeData; template: string }) {
-  const [pages, setPages] = useState<React.ReactNode[][]>([]);
-  const [isMeasuring, setIsMeasuring] = useState(true); // Start with measuring
-  const [hasInitialized, setHasInitialized] = useState(false);
-  const sectionRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const lastDataRef = useRef<string>("");
-  const lastTemplateRef = useRef<string>("");
+  const resumeData = data;
+  const sectionOrder = resumeData?.sectionOrder || [];
   
+  // State for pagination and measurement
+  const [pages, setPages] = useState<React.ReactNode[][]>([]);
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [scale, setScale] = useState(0.8);
+  
+  // Refs for tracking
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const lastDataRef = useRef<string>('');
+  const lastTemplateRef = useRef<string>('');
+  
+  // Get template component
   const TemplateComponent = getTemplate(template) || Onyx;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const sectionOrder = data?.sectionOrder || [];
+  
+
 
   // Memoize the data string to detect actual changes
   const dataString = useMemo(() => JSON.stringify(data), [data]);
@@ -60,8 +72,6 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
   // Height-based pagination with debouncing
   const measureAndPaginate = useCallback(() => {
     if (!needsRemeasuring) return;
-    
-    setIsMeasuring(true);
     
     // Use requestIdleCallback for better performance, fallback to requestAnimationFrame
     const scheduleMeasurement = () => {
@@ -126,7 +136,6 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
       }
       
       setPages(allPages);
-      setIsMeasuring(false);
       setHasInitialized(true);
       
       // Update refs to track what we've measured
@@ -142,29 +151,30 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
     }
   }, [needsRemeasuring, sectionNodes, dataString, template]);
 
-  // Effect to trigger measurement when needed
+  // Trigger measurement when needed
   useEffect(() => {
-    if (needsRemeasuring) {
-      // For template changes, measure immediately
-      if (template !== lastTemplateRef.current) {
-        measureAndPaginate();
-      } else {
-        // For data changes, use small delay to batch rapid changes
-        const timeoutId = setTimeout(measureAndPaginate, 25);
-        return () => clearTimeout(timeoutId);
-      }
-    }
-  }, [needsRemeasuring, measureAndPaginate, template]);
+    measureAndPaginate();
+  }, [measureAndPaginate]);
 
-  // Force initial measurement if no pages exist
-  useEffect(() => {
-    if (pages.length === 0 && !isMeasuring && data) {
-      measureAndPaginate();
+  // Responsive scale for preview (not for print)
+  const getScale = () => {
+    if (typeof window !== "undefined") {
+      const screenWidth = window.innerWidth;
+      if (screenWidth < 768) return 0.5;
+      if (screenWidth < 1024) return 0.65;
+      return 0.8;
     }
-  }, [pages.length, isMeasuring, data, measureAndPaginate]);
+    return 0.8;
+  };
 
-  // Print CSS
-  useEffect(() => {
+  React.useEffect(() => {
+    const handleResize = () => setScale(getScale());
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Print CSS (for PDF/print)
+  React.useEffect(() => {
     const style = document.createElement("style");
     style.innerHTML = `
       @media print {
@@ -180,170 +190,128 @@ export function ResumePreview({ data, template }: { data: ResumeData; template: 
       }
     `;
     document.head.appendChild(style);
-    return () => { document.head.removeChild(style); };
+    return () => { if (document.head.contains(style)) document.head.removeChild(style); };
   }, []);
-  
-  // Early return if no data
-  if (!data) {
+
+  const scaledWidth = A4_WIDTH * scale;
+  const scaledHeight = A4_HEIGHT * scale;
+
+  if (!resumeData) {
     return (
       <div className="flex flex-col items-center p-4" style={{ background: "#f5f5f5" }}>
         <div className="w-full max-w-[850px]">
-          <div className="bg-white mb-6 border border-gray-200 flex items-center justify-center" style={{
-            width: A4_WIDTH,
-            height: A4_HEIGHT,
-            boxSizing: "border-box",
-          }}>
+          <div
+            className="bg-white mb-6 border border-gray-200 flex items-center justify-center"
+            style={{
+              width: A4_WIDTH,
+              height: A4_HEIGHT,
+              boxSizing: "border-box",
+            }}
+          >
             <div className="text-muted-foreground">No resume data available</div>
           </div>
         </div>
       </div>
     );
   }
-  
-  // Show loading state while measuring
-  if (isMeasuring && pages.length === 0) {
-    return (
-      <div className="flex flex-col items-center p-4" style={{ background: "#f5f5f5" }}>
-        <div className="w-full max-w-[850px]">
-          <div className="bg-white mb-6 border border-gray-200 animate-pulse" style={{
-            width: A4_WIDTH,
-            height: A4_HEIGHT,
-            boxSizing: "border-box",
-          }} />
-        </div>
-      </div>
-    );
-  }
 
-  // Fallback: if no pages exist, render a single page with all content
-  if (pages.length === 0 && data) {
-    return (
-      <div className="flex flex-col items-center p-4" style={{ background: "#f5f5f5" }}>
-        <div className="w-full max-w-[850px]">
-          <div
-            className="resume-print-page bg-white mb-6 border border-gray-200"
-            style={{
-              width: A4_WIDTH,
-              height: A4_HEIGHT,
-              boxSizing: "border-box",
-              color: "#222",
-              background: "#fff",
-              position: "relative",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              pageBreakAfter: "always",
-            }}
-          >
-            <div
-              style={{
-                flex: "1 1 0%",
-                padding: PAGE_MARGIN,
-                overflow: "hidden",
-                overflowX: "hidden",
-                background: "#fff",
-                wordBreak: "break-word",
-                display: "block",
-                boxSizing: "border-box",
-              }}
+  // Enhanced preview with clean, responsive UI and correct print/export
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header (non-print) */}
+        <div className="text-center mb-8 resume-nonprint">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">Resume Preview</h2>
+          <p className="text-gray-600">
+            Template: <span className="font-medium capitalize">{template}</span>
+            {pages.length > 1 && <span className="ml-4">• {pages.length} pages</span>}
+          </p>
+        </div>
+        {/* Controls (non-print) */}
+        <div className="flex justify-center mb-8 resume-nonprint">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2 flex items-center gap-2">
+            <span className="text-sm text-gray-600 px-3">Zoom:</span>
+            <button
+              onClick={() => setScale(Math.max(0.3, scale - 0.1))}
+              className="p-2 hover:bg-gray-100 rounded transition-colors"
             >
-              <TemplateComponent data={data} sectionsToRender={sectionOrder} />
-            </div>
-            <div
-              style={{
-                height: FOOTER_HEIGHT,
-                flexShrink: 0,
-                borderTop: "1px solid #2563eb",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 12,
-                background: "#fff",
-                color: "#222",
-                letterSpacing: 1
-              }}
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+              </svg>
+            </button>
+            <span className="text-sm font-medium min-w-[3rem] text-center">{Math.round(scale * 100)}%</span>
+            <button
+              onClick={() => setScale(Math.min(1.2, scale + 0.1))}
+              className="p-2 hover:bg-gray-100 rounded transition-colors"
             >
-              {/* No page number for single page */}
-            </div>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  // Render paginated result
-  return (
-    <div className="flex flex-col items-center p-4" style={{ background: "#f5f5f5" }}>
-      <div className="w-full max-w-[850px]">
-        {pages.map((pageContent, idx) => (
-          <div
-            key={`resume-page-${idx}-${dataString}`}
-            className="resume-print-page bg-white mb-6 border border-gray-200"
-            style={{
-              width: A4_WIDTH,
-              height: A4_HEIGHT,
-              boxSizing: "border-box",
-              color: "#222",
-              background: "#fff",
-              position: "relative",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              pageBreakAfter: "always",
-            }}
-          >
-            {idx > 0 && (
+        {/* Pages */}
+        <div className="flex flex-col items-center gap-8">
+          {pages.map((pageContent, idx) => (
+            <div key={idx} className="relative">
+              {/* Shadow */}
               <div
+                className="absolute inset-0 bg-gray-400 rounded-lg transform translate-x-2 translate-y-2 opacity-20"
+                style={{ width: scaledWidth, height: scaledHeight }}
+              />
+              {/* Page */}
+              <div
+                className="resume-print-page bg-white rounded-lg shadow-2xl border border-gray-200 relative z-10 transition-all duration-300 hover:shadow-3xl"
                 style={{
-                  height: HEADER_HEIGHT,
-                  flexShrink: 0,
-                  borderBottom: "1px solid #eee",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 600,
-                  fontSize: 18,
-                  background: "#fff",
+                  width: scaledWidth,
+                  height: scaledHeight,
+                  boxSizing: "border-box",
                   color: "#222",
-                  letterSpacing: 1,
+                  background: "#fff",
+                  position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
                 }}
               >
-                {data.personalInfo?.name || "Resume"}
+                <div
+                  style={{
+                    flex: 1,
+                    padding: PAGE_MARGIN * scale,
+                    overflow: "hidden",
+                    background: "#fff",
+                    wordBreak: "break-word",
+                    boxSizing: "border-box",
+                    height: scaledHeight - PAGE_MARGIN * scale * 2,
+                  }}
+                >
+                  <div
+                    style={{
+                      transform: `scale(${1 / scale})`,
+                      transformOrigin: "top left",
+                      width: `${100 / scale}%`,
+                      height: `${100 / scale}%`,
+                    }}
+                  >
+                    {pageContent}
+                  </div>
+                </div>
+                {/* Corner fold */}
+                <div
+                  className="absolute top-0 right-0 w-8 h-8 bg-gray-100 transform rotate-45 translate-x-4 -translate-y-4 opacity-30 rounded-sm"
+                  style={{ zIndex: 5 }}
+                />
               </div>
-            )}
-            <div
-              style={{
-                flex: "1 1 0%",
-                padding: PAGE_MARGIN,
-                overflow: "hidden",
-                overflowX: "hidden",
-                background: "#fff",
-                wordBreak: "break-word",
-                display: "block",
-                // minHeight: PAGE_MARGIN+1,
-                boxSizing: "border-box",
-              }}
-            >
-              {pageContent}
             </div>
-            <div
-              style={{
-                height: FOOTER_HEIGHT,
-                flexShrink: 0,
-                borderTop: "1px solid #2563eb",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 12,
-                background: "#fff",
-                color: "#222",
-                letterSpacing: 1
-              }}
-            >
-              {pages.length > 1 ? `Page ${idx + 1}` : null}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        {/* Footer (non-print) */}
+        <div className="text-center mt-8 resume-nonprint">
+          <p className="text-sm text-gray-500">
+            A4 Format • {A4_WIDTH} × {A4_HEIGHT} pixels • Ready for print and PDF export
+            {pages.length > 1 && <span> • {pages.length} pages</span>}
+          </p>
+        </div>
       </div>
       
       {/* Hidden measurement container */}

@@ -121,8 +121,7 @@
   }
 }
 
-@tailwind base;
-@tailwind components;
+@import "tailwindcss/preflight";
 @tailwind utilities;
 
 @layer base {
@@ -157,4 +156,28 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.resume-print-page {
+  /* Override oklch colors for PDF export/print compatibility */
+  --background: #fff !important;
+  --foreground: #222 !important;
+  --card: #fff !important;
+  --card-foreground: #222 !important;
+  --popover: #fff !important;
+  --popover-foreground: #222 !important;
+  --primary: #2563eb !important;
+  --primary-foreground: #fff !important;
+  --secondary: #f1f5f9 !important;
+  --secondary-foreground: #222 !important;
+  --muted: #f1f5f9 !important;
+  --muted-foreground: #64748b !important;
+  --accent: #f1f5f9 !important;
+  --accent-foreground: #222 !important;
+  --destructive: #ef4444 !important;
+  --border: #e5e7eb !important;
+  --input: #e5e7eb !important;
+  --ring: #2563eb !important;
+  color: #222 !important;
+  background: #fff !important;
 }
