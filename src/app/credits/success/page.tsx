@@ -87,6 +87,11 @@ function CreditSuccessPageInner() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/60 flex items-center justify-center">
         <div className="max-w-md w-full bg-white dark:bg-muted/80 rounded-xl shadow-lg border border-border p-8 text-center">
+          {/* TEST MODE WARNING */}
+          <div className="mb-4 p-3 rounded bg-yellow-100 text-yellow-900 border border-yellow-300 font-semibold flex items-center gap-2">
+            <span className="text-xl">ℹ️</span>
+            <span>Heads up: Since Manas doesn&apos;t have a business account yet, we&apos;re using a test environment.<br />Payments and credits are mocked — no real transactions will occur.</span>
+          </div>
           <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-red-600" />
           </div>
@@ -122,6 +127,11 @@ function CreditSuccessPageInner() {
       {/* Success Content */}
       <div className="max-w-2xl mx-auto px-6 py-16">
         <Card className="border-0 shadow-xl">
+          {/* TEST MODE WARNING */}
+          <div className="mb-4 p-3 rounded bg-yellow-100 text-yellow-900 border border-yellow-300 font-semibold text-center flex items-center gap-2">
+            <span className="text-xl">ℹ️</span>
+            <span>Heads up: Since Manas doesn&apos;t have a business account yet, we&apos;re using a test environment.<br />Payments and credits are mocked — no real transactions will occur.</span>
+          </div>
           <CardHeader className="text-center pb-8">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
@@ -130,7 +140,7 @@ function CreditSuccessPageInner() {
               Payment Successful!
             </CardTitle>
             <p className="text-muted-foreground">
-              Thank you for your purchase. Your credits have been added to your account.
+              Thank you for your payment! This is a test account, so no credits have been added.
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
