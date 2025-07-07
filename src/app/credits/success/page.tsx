@@ -83,6 +83,39 @@ function CreditSuccessPageInner() {
     );
   }
 
+  // Get session_id from URL for fallback logic
+  const sessionId = searchParams?.get('session_id');
+
+  // If no transaction found, but session_id is present, show payment success (test mode)
+  if ((noTransaction || !transaction) && sessionId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/60 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white dark:bg-muted/80 rounded-xl shadow-lg border border-border p-8 text-center">
+          {/* TEST MODE WARNING */}
+          <div className="mb-4 p-3 rounded bg-yellow-100 text-yellow-900 border border-yellow-300 font-semibold flex items-center gap-2">
+            <span className="text-xl">ℹ️</span>
+            <span>Heads up: Since Manas doesn&apos;t have a business account yet, we&apos;re using a test environment.<br />Payments and credits are mocked — no real transactions will occur.</span>
+          </div>
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-green-600 mb-2">Payment Successful (Test Mode)</h2>
+          <p className="text-muted-foreground mb-4">
+            Your payment was processed successfully.<br />
+            <span className="font-semibold">However, since this is a test environment, no credits have been added to your account.</span>
+          </p>
+          <Button onClick={() => router.push('/dashboard')} className="w-full mb-2">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
+          </Button>
+          <Button variant="outline" onClick={() => router.push('/credits/transactions')} className="w-full">
+            <Calendar className="w-4 h-4 mr-2" /> View Transaction History
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // If no transaction and no session_id, show the original 'No Transaction Found' message
   if (noTransaction || !transaction) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/60 flex items-center justify-center">
