@@ -12,23 +12,14 @@ import { CreditBalance } from '@/components/CreditBalance';
 import type { CreditTransaction } from '@/hooks/use-credits';
 import React, { Suspense } from 'react';
 
-interface PaymentDetails {
-  credits: number;
-  amount: number;
-  sessionId?: string;
-  transactionId?: string;
-  timestamp?: string;
-  status: string;
-}
-
 function CreditSuccessPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUser();
   const { fetchBalance, fetchHistory, history } = useCredits();
   const [loading, setLoading] = useState(true);
-  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
-  const [latestTransaction, setLatestTransaction] = useState<CreditTransaction | null>(null);
+  const [transaction, setTransaction] = useState<CreditTransaction | null>(null);
+  const [noTransaction, setNoTransaction] = useState(false);
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
@@ -36,8 +27,6 @@ function CreditSuccessPageInner() {
       try {
         // Get URL parameters
         const sessionId = searchParams?.get('session_id');
-        const credits = searchParams?.get('credits');
-        const amount = searchParams?.get('amount');
 
         // Refresh user's credit balance and history
         await fetchBalance();
@@ -55,61 +44,25 @@ function CreditSuccessPageInner() {
         }
 
         if (foundTx) {
-          setPaymentDetails({
-            credits: foundTx.amount,
-            amount: foundTx.price || 0,
-            sessionId: foundTx.sessionId,
-            transactionId: foundTx.id,
-            status: foundTx.status || 'success',
-            timestamp: foundTx.createdAt
-          });
-          setLatestTransaction(foundTx);
+          setTransaction(foundTx);
           toast.success(`Successfully purchased ${foundTx.amount} credits!`);
         } else if (history && history.length > 0) {
-          // If no sessionId match, use the latest positive transaction
-          const latest = history.find(tx => tx.amount > 0);
+          // If no sessionId match, use the latest positive transaction within the last 5 minutes
+          const now = Date.now();
+          const latest = history.find(tx => tx.amount > 0 && now - new Date(tx.createdAt).getTime() < 5 * 60 * 1000);
           if (latest) {
-            setPaymentDetails({
-              credits: latest.amount,
-              amount: latest.price || 0,
-              sessionId: latest.sessionId,
-              transactionId: latest.id,
-              status: latest.status || 'success',
-              timestamp: latest.createdAt
-            });
-            setLatestTransaction(latest);
+            setTransaction(latest);
             toast.success(`Successfully purchased ${latest.amount} credits!`);
           } else {
-            setPaymentDetails({
-              credits: 0,
-              amount: 0,
-              status: 'success',
-              timestamp: new Date().toISOString()
-            });
-            toast.success('Payment completed successfully!');
+            setNoTransaction(true);
           }
-        } else if (sessionId && credits && amount) {
-          // If we have URL parameters, use them
-          setPaymentDetails({
-            credits: parseInt(credits),
-            amount: parseInt(amount),
-            sessionId,
-            status: 'success',
-            timestamp: new Date().toISOString()
-          });
-          toast.success(`Successfully purchased ${credits} credits!`);
         } else {
-          setPaymentDetails({
-            credits: 0,
-            amount: 0,
-            status: 'success',
-            timestamp: new Date().toISOString()
-          });
-          toast.success('Payment completed successfully!');
+          setNoTransaction(true);
         }
       } catch (error) {
         console.error('Error initializing success page:', error);
         toast.error('Error loading payment details');
+        setNoTransaction(true);
       } finally {
         setLoading(false);
         if (timeout) clearTimeout(timeout);
@@ -119,12 +72,35 @@ function CreditSuccessPageInner() {
     initializePage();
   }, [searchParams, fetchBalance, fetchHistory, history]);
 
-  if (loading || !paymentDetails) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/60 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Processing your payment...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (noTransaction || !transaction) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/60 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white dark:bg-muted/80 rounded-xl shadow-lg border border-border p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-red-600 mb-2">No Transaction Found</h2>
+          <p className="text-muted-foreground mb-4">
+            No recent credit purchase transaction was found for your account.<br />
+            If you believe this is an error, please check your transaction history or contact support.
+          </p>
+          <Button onClick={() => router.push('/dashboard')} className="w-full mb-2">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
+          </Button>
+          <Button variant="outline" onClick={() => router.push('/credits/transactions')} className="w-full">
+            <Calendar className="w-4 h-4 mr-2" /> View Transaction History
+          </Button>
         </div>
       </div>
     );
@@ -157,7 +133,6 @@ function CreditSuccessPageInner() {
               Thank you for your purchase. Your credits have been added to your account.
             </p>
           </CardHeader>
-          
           <CardContent className="space-y-6">
             {/* Payment Details */}
             <div className="bg-muted/50 rounded-lg p-6">
@@ -165,57 +140,50 @@ function CreditSuccessPageInner() {
                 <Receipt className="w-5 h-5 text-primary" />
                 <h3 className="font-semibold">Payment Details</h3>
               </div>
-              
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Credits Purchased:</span>
-                  <span className="font-semibold">{paymentDetails?.credits || latestTransaction?.amount || 0} credits</span>
+                  <span className="font-semibold">{transaction.amount} credits</span>
                 </div>
-                
-                {paymentDetails?.amount && paymentDetails.amount > 0 && (
+                {transaction.price && transaction.price > 0 && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Amount Paid:</span>
-                    <span className="font-semibold">₹{((paymentDetails.amount) / 100).toFixed(2)}</span>
+                    <span className="font-semibold">₹{((transaction.price) / 100).toFixed(2)}</span>
                   </div>
                 )}
-                
-                {paymentDetails?.sessionId && (
+                {transaction.sessionId && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Session ID:</span>
                     <span className="font-mono text-sm text-muted-foreground">
-                      {paymentDetails.sessionId?.slice(-8)}...
+                      {transaction.sessionId.slice(-8)}...
                     </span>
                   </div>
                 )}
-
-                {paymentDetails?.transactionId && (
+                {transaction.id && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Transaction ID:</span>
                     <span className="font-mono text-sm text-muted-foreground">
-                      {paymentDetails.transactionId.slice(-8)}...
+                      {transaction.id.slice(-8)}...
                     </span>
                   </div>
                 )}
-
-                {paymentDetails?.timestamp && (
+                {transaction.createdAt && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Date & Time:</span>
                     <span className="font-medium text-sm">
-                      {new Date(paymentDetails.timestamp).toLocaleString()}
+                      {new Date(transaction.createdAt).toLocaleString()}
                     </span>
                   </div>
                 )}
-
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status:</span>
                   <span className="font-semibold text-green-600 flex items-center gap-1">
                     <CheckCircle className="w-4 h-4" />
-                    {paymentDetails.status === 'success' ? 'Completed' : paymentDetails.status}
+                    {transaction.status === 'success' ? 'Completed' : (transaction.status || 'Completed')}
                   </span>
                 </div>
               </div>
             </div>
-
             {/* User Info */}
             {user && (
               <div className="bg-muted/50 rounded-lg p-6">
@@ -235,13 +203,11 @@ function CreditSuccessPageInner() {
                 </div>
               </div>
             )}
-
             {/* Current Credits */}
             <div className="bg-muted/50 rounded-lg p-6 flex items-center gap-4">
               <span className="font-semibold">Current Balance:</span>
               <CreditBalance />
             </div>
-
             {/* What you can do now */}
             <div className="bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-950/30 dark:to-sky-950/30 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
               <h3 className="font-semibold mb-3 text-blue-800 dark:text-blue-200">What you can do now:</h3>
@@ -252,7 +218,6 @@ function CreditSuccessPageInner() {
                 <li>• Get AI-powered suggestions for improvements</li>
               </ul>
             </div>
-
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button 
@@ -262,7 +227,6 @@ function CreditSuccessPageInner() {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Dashboard
               </Button>
-              
               <Button 
                 variant="outline"
                 onClick={() => router.push('/credits/transactions')}
@@ -272,7 +236,6 @@ function CreditSuccessPageInner() {
                 View Transaction History
               </Button>
             </div>
-
             {/* Additional Info */}
             <div className="text-center text-sm text-muted-foreground pt-4 border-t">
               <p>
