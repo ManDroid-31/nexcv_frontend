@@ -203,6 +203,10 @@ export const AIPanel: React.FC<AIPanelProps> = ({ onApplyEnhanced }) => {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* AI credit cost badge */}
+            <span className="ml-2 px-2 py-1 rounded bg-yellow-200 text-yellow-900 text-xs font-semibold border border-yellow-300 animate-pulse">
+              ⚡ Each AI chat costs <b>1 credit</b>
+            </span>
             <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
             <Button
               onClick={() => setIsMaximized(!isMaximized)}
